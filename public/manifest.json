@@ -1,0 +1,33 @@
+{
+  "manifest_version": 2,
+  "name": "Buy4Least",
+  "version": "1.0.0",
+  "description": "Optimize your shopping expenses by finding the best combination of products and sellers",
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  },
+  "permissions": ["activeTab", "storage", "tabs", "<all_urls>"],
+  "browser_action": {
+    "default_icon": {
+      "19": "icons/icon-19.png",
+      "38": "icons/icon-38.png"
+    },
+    "default_title": "Buy4Least",
+    "default_popup": "popup/popup.html"
+  },
+  "sidebar_action": {
+    "default_title": "Buy4Least",
+    "default_panel": "sidebar/sidebar.html",
+    "default_icon": "icons/icon-48.png"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-scripts/scraper.js"]
+    }
+  ]
+}
