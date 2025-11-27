@@ -67,12 +67,19 @@ function renderSessionsView() {
       <!-- Header -->
       <div class="flex justify-between items-center mb-3">
         <h1 class="text-2xl font-semibold text-gray-800">Sessions list</h1>
-        <button class="text-gray-600 p-2 cursor-pointer" id="settings-button">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
+        <div class="flex space-x-2">
+          <button class="text-gray-600 p-2 cursor-pointer" id="import-session-button" title="Import Session">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </button>
+          <button class="text-gray-600 p-2 cursor-pointer" id="settings-button" title="Settings">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Session Cards -->
@@ -85,12 +92,17 @@ function renderSessionsView() {
                 <p class="text-gray-600 text-md truncate">${session.products.length} Products</p>
               </div>
               <div class="flex space-x-2 flex-shrink-0">
-                <button class="text-gray-600 p-1 cursor-pointer edit-button" data-id="${session.id}">
+                <button class="text-gray-600 p-1 cursor-pointer export-button" data-id="${session.id}" title="Export Session">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                </button>
+                <button class="text-gray-600 p-1 cursor-pointer edit-button" data-id="${session.id}" title="Edit Session">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </button>
-                <button class="text-gray-600 p-1 cursor-pointer delete-button" data-id="${session.id}">
+                <button class="text-gray-600 p-1 cursor-pointer delete-button" data-id="${session.id}" title="Delete Session">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
@@ -112,6 +124,10 @@ function renderSessionsView() {
   `
 
   // Add event listeners
+  document.getElementById("import-session-button").addEventListener("click", () => {
+    importSession()
+  })
+
   document.getElementById("settings-button").addEventListener("click", () => {
     currentView = "settings"
     renderApp()
@@ -123,7 +139,7 @@ function renderSessionsView() {
 
   document.querySelectorAll(".session-item").forEach((item) => {
     item.addEventListener("click", (e) => {
-      if (!e.target.closest(".edit-button") && !e.target.closest(".delete-button")) {
+      if (!e.target.closest(".edit-button") && !e.target.closest(".delete-button") && !e.target.closest(".export-button")) {
         const sessionId = item.dataset.id
         currentSession = sessionId
         browser.runtime.sendMessage({
@@ -133,6 +149,15 @@ function renderSessionsView() {
         currentView = "products"
         renderApp()
       }
+    })
+  })
+
+  document.querySelectorAll(".export-button").forEach((button) => {
+    button.addEventListener("click", (e) => {
+      e.stopPropagation()
+      const sessionId = button.dataset.id
+      const session = sessions.find((s) => s.id === sessionId)
+      exportSession(session)
     })
   })
 
@@ -2140,6 +2165,72 @@ function getUniqueSellers(session) {
   }
 
   return Array.from(sellers)
+}
+
+function exportSession(session) {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(session, null, 2));
+  const downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute("href", dataStr);
+  downloadAnchorNode.setAttribute("download", `session-${session.name}.json`);
+  document.body.appendChild(downloadAnchorNode); // required for firefox
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+}
+
+function importSession() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json';
+  
+  input.onchange = e => { 
+     const file = e.target.files[0]; 
+     const reader = new FileReader();
+     reader.readAsText(file,'UTF-8');
+     reader.onload = readerEvent => {
+        try {
+          const content = readerEvent.target.result;
+          const sessionData = JSON.parse(content);
+          
+          // Basic validation
+          if (!sessionData.name || !Array.isArray(sessionData.products)) {
+            alert("Invalid session file format");
+            return;
+          }
+
+          // Create new session with imported name
+          browser.runtime.sendMessage({
+            action: "createSession",
+            name: sessionData.name + " (Imported)"
+          }).then(response => {
+             const newSessionId = response.currentSession;
+             
+             // Update the new session with imported data
+             // We need to preserve the new ID but overwrite other fields
+             const updatedSession = {
+               ...sessionData,
+               id: newSessionId,
+               created: new Date().toISOString()
+             };
+
+             browser.runtime.sendMessage({
+               action: "updateSession",
+               sessionId: newSessionId,
+               updatedSession: updatedSession
+             }).then(updateResponse => {
+               sessions = updateResponse.sessions;
+               currentSession = newSessionId;
+               renderApp();
+             });
+          });
+
+        } catch (error) {
+          console.error("Error importing session:", error);
+          alert("Error importing session");
+        }
+     }
+  }
+  
+  input.click();
 }
 
 // Initialize the app
