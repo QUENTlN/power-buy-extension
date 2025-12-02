@@ -138,6 +138,18 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       deleteBundle(message.sessionId, message.bundleId)
       sendResponse({ success: true, sessions, currentSession })
       break
+    case "createAlternativeGroup":
+      createAlternativeGroup(message.sessionId, message.group)
+      sendResponse({ success: true, sessions, currentSession })
+      break
+    case "updateAlternativeGroup":
+      updateAlternativeGroup(message.sessionId, message.groupId, message.updatedGroup)
+      sendResponse({ success: true, sessions, currentSession })
+      break
+    case "deleteAlternativeGroup":
+      deleteAlternativeGroup(message.sessionId, message.groupId)
+      sendResponse({ success: true, sessions, currentSession })
+      break
     case "getSessions":
       sendResponse({ sessions, currentSession })
       break
@@ -164,6 +176,7 @@ function createSession(name) {
     name,
     products: [],
     bundles: [],
+    alternativeGroups: [],
     created: new Date().toISOString(),
   }
   sessions.push(newSession)
@@ -198,6 +211,7 @@ function createProduct(sessionId, product) {
   if (session) {
     product.id = Date.now().toString()
     product.pages = []
+    product.quantity = product.quantity || 1
     session.products.push(product)
     saveToStorage()
   }
@@ -218,6 +232,10 @@ function addPage(sessionId, productId, page) {
     const product = session.products.find((p) => p.id === productId)
     if (product) {
       page.id = Date.now().toString()
+      page.itemsPerPurchase = page.itemsPerPurchase || 1
+      if (page.maxPerPurchase !== undefined && page.maxPerPurchase !== null && page.maxPerPurchase !== '') {
+        page.maxPerPurchase = Number(page.maxPerPurchase)
+      }
       product.pages.push(page)
       saveToStorage()
     }
@@ -279,6 +297,36 @@ function deleteBundle(sessionId, bundleId) {
   }
 }
 
+// Alternative Group management
+function createAlternativeGroup(sessionId, group) {
+  const session = sessions.find((s) => s.id === sessionId)
+  if (session) {
+    if (!session.alternativeGroups) session.alternativeGroups = []
+    group.id = Date.now().toString()
+    session.alternativeGroups.push(group)
+    saveToStorage()
+  }
+}
+
+function updateAlternativeGroup(sessionId, groupId, updatedGroup) {
+  const session = sessions.find((s) => s.id === sessionId)
+  if (session && session.alternativeGroups) {
+    const groupIndex = session.alternativeGroups.findIndex((g) => g.id === groupId)
+    if (groupIndex !== -1) {
+      session.alternativeGroups[groupIndex] = { ...session.alternativeGroups[groupIndex], ...updatedGroup }
+      saveToStorage()
+    }
+  }
+}
+
+function deleteAlternativeGroup(sessionId, groupId) {
+  const session = sessions.find((s) => s.id === sessionId)
+  if (session && session.alternativeGroups) {
+    session.alternativeGroups = session.alternativeGroups.filter((g) => g.id !== groupId)
+    saveToStorage()
+  }
+}
+
 // Scraping
 function scrapePage(tabId) {
   console.log("Checking tab status before scraping:", tabId);
@@ -291,29 +339,6 @@ function scrapePage(tabId) {
       console.log("Tab is not active, skipping scrape:", tabId);
     }
   }).catch(error => console.error("Error checking tab status:", error));
-}
-
-// Optimization
-function getUniqueSellers(session) {
-  const sellers = new Set()
-
-  session.products.forEach((product) => {
-    product.pages.forEach((page) => {
-      if (page.seller) {
-        sellers.add(page.seller)
-      }
-    })
-  })
-
-  if (session.bundles) {
-    session.bundles.forEach((bundle) => {
-      if (bundle.seller) {
-        sellers.add(bundle.seller)
-      }
-    })
-  }
-
-  return Array.from(sellers)
 }
 
 async function optimizeSession(sessionId) {
@@ -331,6 +356,7 @@ async function optimizeSession(sessionId) {
       products: session.products.map((product) => ({
         id: product.id,
         name: product.name,
+        quantity: product.quantity || 1,
         pages: product.pages.map((page) => ({
           id: page.id,
           url: page.url,
@@ -338,12 +364,13 @@ async function optimizeSession(sessionId) {
           shippingPrice: page.shippingPrice,
           currency: page.currency,
           seller: page.seller,
+          itemsPerPurchase: page.itemsPerPurchase || 1,
+          ...(page.maxPerPurchase !== undefined && page.maxPerPurchase !== null && page.maxPerPurchase !== '' && { maxPerPurchase: page.maxPerPurchase }),
         })),
-        alternatives: product.alternatives || [],
         limitedCompatibilityWith: product.limitedCompatibilityWith || [],
       })),
       bundles: session.bundles || [],
-      sellers: getUniqueSellers(session),
+      alternativeGroups: session.alternativeGroups || [],
       deliveryRules: session.deliveryRules || [],
     }
 

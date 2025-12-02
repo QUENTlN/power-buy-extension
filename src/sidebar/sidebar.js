@@ -7,9 +7,100 @@ const browser = window.browser || window.chrome
 // State
 let sessions = []
 let currentSession = null
-let currentView = "sessions" // 'sessions', 'products', 'pages', 'settings'
+let currentView = "sessions" // 'sessions', 'products', 'pages', 'settings', 'deliveryRules', 'alternatives'
 let currentProduct = null
 let scrapedData = null
+
+// Modal utility functions for UX
+function setupAutoFocus(modal) {
+  // Focus on the first input, select, or textarea that is not disabled
+  setTimeout(() => {
+    const firstInput = modal.querySelector('input:not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])')
+    if (firstInput) {
+      firstInput.focus()
+    }
+  }, 0)
+}
+
+function setupEscapeKey(modal, closeCallback) {
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeCallback()
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }
+  document.addEventListener('keydown', handleEscape)
+}
+
+function setupEnterKey(modal, submitCallback) {
+  const handleEnter = (e) => {
+    // Don't submit on Enter if we're in a textarea
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault()
+      submitCallback()
+    }
+  }
+  modal.addEventListener('keydown', handleEnter)
+}
+
+function showFieldError(fieldId, errorMessage) {
+  const field = document.getElementById(fieldId)
+  if (!field) return
+  
+  // Add error styling to field
+  field.classList.add('border-red-500', 'focus:ring-red-500')
+  field.classList.remove('border-gray-300', 'focus:ring-gray-500')
+  
+  // Remove any existing error message
+  const existingError = field.parentElement.querySelector('.field-error-message')
+  if (existingError) {
+    existingError.remove()
+  }
+  
+  // Add error message
+  const errorDiv = document.createElement('p')
+  errorDiv.className = 'field-error-message text-sm text-red-600 mt-1'
+  errorDiv.textContent = errorMessage
+  field.parentElement.appendChild(errorDiv)
+}
+
+function clearFieldError(fieldId) {
+  const field = document.getElementById(fieldId)
+  if (!field) return
+  
+  // Remove error styling
+  field.classList.remove('border-red-500', 'focus:ring-red-500')
+  field.classList.add('border-gray-300', 'focus:ring-gray-500')
+  
+  // Remove error message
+  const errorMessage = field.parentElement.querySelector('.field-error-message')
+  if (errorMessage) {
+    errorMessage.remove()
+  }
+}
+
+function clearAllErrors(modal) {
+  // Remove all error styling and messages
+  modal.querySelectorAll('.border-red-500').forEach(field => {
+    field.classList.remove('border-red-500', 'focus:ring-red-500')
+    field.classList.add('border-gray-300', 'focus:ring-gray-500')
+  })
+  modal.querySelectorAll('.field-error-message').forEach(msg => msg.remove())
+}
+
+function validateRequiredField(fieldId, fieldName) {
+  const field = document.getElementById(fieldId)
+  if (!field) return true
+  
+  const value = field.value.trim()
+  if (!value) {
+    showFieldError(fieldId, `${fieldName} is required`)
+    return false
+  }
+  
+  clearFieldError(fieldId)
+  return true
+}
 
 // Initialize
 function init() {
@@ -55,6 +146,9 @@ function renderApp() {
       break
     case "deliveryRules":
       renderDeliveryRulesView()
+      break
+    case "alternatives":
+      renderAlternativesView()
       break
     default:
       renderSessionsView()
@@ -207,11 +301,11 @@ function renderProductsView() {
           <div class="bg-white rounded-xl shadow-md p-4 product-item" data-id="${product.id}">
             <div class="flex justify-between items-center cursor-pointer">
               <div class="flex-1 min-w-0 mr-4 cursor-pointer">
-                <h2 class="text-xl font-medium text-gray-800 truncate">${product.name}</h2>
+                <h2 class="text-xl font-medium text-gray-800 truncate">${product.name}${product.quantity && product.quantity > 1 ? ` (×${product.quantity})` : ''}</h2>
                 <p class="text-gray-600 text-md truncate">
                   ${product.pages.length} Pages
-                  ${session.bundles && session.bundles.some(b => b.products.includes(product.id)) 
-                    ? ` • ${session.bundles.filter(b => b.products.includes(product.id)).length} Bundles` 
+                  ${session.bundles && session.bundles.some(b => b.products && b.products.some(bp => bp.productId === product.id)) 
+                    ? ` • ${session.bundles.filter(b => b.products && b.products.some(bp => bp.productId === product.id)).length} Bundles` 
                     : ''}
                 </p>
               </div>
@@ -249,6 +343,15 @@ function renderProductsView() {
           </svg>
           <span class="text-lg font-medium">Delivery Rules</span>
         </button>
+        <button id="manage-alternatives-button" class="flex-1 flex items-center justify-center space-x-2 cursor-pointer bg-purple-50 text-purple-700 px-4 py-3 rounded-xl hover:bg-purple-100 transition-colors duration-200 shadow-sm border border-purple-200">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          <span class="text-lg font-medium">Manage Alternatives</span>
+        </button>
+      </div>
+
+      <div class="flex space-x-4 mt-4">
         <button id="optimize-button" class="flex-1 flex items-center justify-center space-x-2 cursor-pointer bg-gray-800 text-white px-4 py-3 rounded-xl hover:bg-gray-700 transition-colors duration-200 shadow-sm">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -292,6 +395,11 @@ function renderProductsView() {
           alert(`Optimization failed: ${result.error}`)
         }
       })
+  })
+
+  document.getElementById("manage-alternatives-button").addEventListener("click", () => {
+    currentView = "alternatives"
+    renderApp()
   })
 
   document.querySelectorAll(".product-item").forEach((item) => {
@@ -352,7 +460,7 @@ function renderPagesView() {
 
       <!-- Pages List -->
       <div class="space-y-4">
-        ${product.pages.length > 0 || (session.bundles && session.bundles.some(b => b.products.includes(product.id)))
+        ${product.pages.length > 0 || (session.bundles && session.bundles.some(b => b.products && b.products.some(bp => bp.productId === product.id)))
           ? `
             ${product.pages.map(page => `
             <div class="bg-white rounded-xl shadow-md p-4">
@@ -378,6 +486,8 @@ function renderPagesView() {
                         return `${s} ${page.currency || ""}`
                       }
                     })()}</p>
+                    ${page.itemsPerPurchase && page.itemsPerPurchase > 1 ? `<p class="text-gray-600">Qty per purchase: ${page.itemsPerPurchase}</p>` : ''}
+                    ${page.maxPerPurchase ? `<p class="text-gray-600">Max purchases: ${page.maxPerPurchase}</p>` : ''}
                   </div>
                 </div>
                 <div class="flex items-start space-x-2">
@@ -400,7 +510,7 @@ function renderPagesView() {
               </div>
             </div>
             `).join('')}
-            ${session.bundles && session.bundles.filter(b => b.products.includes(product.id)).map(bundle => `
+            ${session.bundles && session.bundles.filter(b => b.products && b.products.some(bp => bp.productId === product.id)).map(bundle => `
             <div class="bg-blue-50 border border-blue-200 rounded-xl shadow-md p-4">
               <div class="flex justify-between items-start">
                 <div class="flex-1 min-w-0 mr-4">
@@ -427,6 +537,20 @@ function renderPagesView() {
                         return `${s} ${bundle.currency || ""}`
                       }
                     })()}</p>
+                    ${bundle.itemsPerPurchase && bundle.itemsPerPurchase > 1 ? `<p class="text-gray-600">Qty per purchase: ${bundle.itemsPerPurchase}</p>` : ''}
+                    ${bundle.maxPerPurchase ? `<p class="text-gray-600">Max purchases: ${bundle.maxPerPurchase}</p>` : ''}
+                    <div class="mt-2">
+                      <p class="text-sm font-medium text-gray-700">Products in bundle:</p>
+                      <ul class="mt-1 space-y-1">
+                        ${bundle.products && bundle.products.length > 0 
+                          ? bundle.products.map(bp => {
+                              const prod = session.products.find(p => p.id === bp.productId)
+                              return prod ? `<li class="text-sm text-gray-600">• ${prod.name} ${bp.quantity > 1 ? `(x${bp.quantity})` : ''}</li>` : ''
+                            }).join('')
+                          : '<li class="text-sm text-gray-600">No products</li>'
+                        }
+                      </ul>
+                    </div>
                   </div>
                 </div>
                 <div class="flex items-start space-x-2">
@@ -658,13 +782,49 @@ function showNewSessionModal() {
 
   document.body.appendChild(modal)
 
+  const closeModal = () => {
+    clearAllErrors(modal)
+    document.body.removeChild(modal)
+  }
+
+  const saveSession = () => {
+    clearAllErrors(modal)
+    
+    // Validate
+    if (!validateRequiredField('session-name', 'Session name')) {
+      return
+    }
+    
+    const name = document.getElementById("session-name").value.trim()
+    
+    if (sessions.some(s => s.name === name)) {
+      showFieldError('session-name', 'A session with this name already exists')
+      return
+    }
+
+    browser.runtime
+      .sendMessage({
+        action: "createSession",
+        name,
+      })
+      .then((response) => {
+        sessions = response.sessions
+        currentSession = response.currentSession
+        closeModal()
+        renderApp()
+      })
+  }
+
+  // Setup UX improvements
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, saveSession)
+
   // Close modal when clicking overlay (and prevent propagation when clicking content)
   const overlayEl = document.getElementById('modalOverlay')
   const contentEl = document.getElementById('modalContent')
   if (overlayEl) {
-    overlayEl.addEventListener('click', () => {
-      document.body.removeChild(modal)
-    })
+    overlayEl.addEventListener('click', closeModal)
   }
   if (contentEl) {
     contentEl.addEventListener('click', (ev) => ev.stopPropagation())
@@ -673,44 +833,18 @@ function showNewSessionModal() {
   // Close button (top-right X)
   const closeBtn = document.getElementById('close-optimization')
   if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      document.body.removeChild(modal)
-    })
+    closeBtn.addEventListener('click', closeModal)
   }
 
-  document.querySelector("#modalOverlay").addEventListener("click", () => {
-    document.body.removeChild(modal)
-  })
+  document.querySelector("#modalOverlay").addEventListener("click", closeModal)
 
   document.querySelector("#modalContent").addEventListener("click", (event) => {
     event.stopPropagation()
   })
 
-  document.getElementById("cancel-button").addEventListener("click", () => {
-    document.body.removeChild(modal)
-  })
+  document.getElementById("cancel-button").addEventListener("click", closeModal)
 
-  document.getElementById("save-button").addEventListener("click", () => {
-    const name = document.getElementById("session-name").value.trim()
-    if (name) {
-      if (sessions.some(s => s.name === name)) {
-        alert("A session with this name already exists. Please choose another name.")
-        return
-      }
-
-      browser.runtime
-        .sendMessage({
-          action: "createSession",
-          name,
-        })
-        .then((response) => {
-          sessions = response.sessions
-          currentSession = response.currentSession
-          document.body.removeChild(modal)
-          renderApp()
-        })
-    }
-  })
+  document.getElementById("save-button").addEventListener("click", saveSession)
 }
 
 function showEditSessionModal(session) {
@@ -738,34 +872,47 @@ function showEditSessionModal(session) {
 
   document.body.appendChild(modal)
 
-  document.querySelector("#modalOverlay").addEventListener("click", () => {
+  const closeModal = () => {
+    clearAllErrors(modal)
     document.body.removeChild(modal)
-  })
+  }
+
+  const saveSession = () => {
+    clearAllErrors(modal)
+    
+    // Validate
+    if (!validateRequiredField('session-name', 'Session name')) {
+      return
+    }
+    
+    const name = document.getElementById("session-name").value.trim()
+    session.name = name
+    browser.runtime
+      .sendMessage({
+        action: "updateSession",
+        session,
+      })
+      .then((response) => {
+        sessions = response.sessions
+        closeModal()
+        renderApp()
+      })
+  }
+
+  // Setup UX improvements
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, saveSession)
+
+  document.querySelector("#modalOverlay").addEventListener("click", closeModal)
 
   document.querySelector("#modalContent").addEventListener("click", (event) => {
     event.stopPropagation()
   })
 
-  document.getElementById("cancel-button").addEventListener("click", () => {
-    document.body.removeChild(modal)
-  })
+  document.getElementById("cancel-button").addEventListener("click", closeModal)
 
-  document.getElementById("save-button").addEventListener("click", () => {
-    const name = document.getElementById("session-name").value.trim()
-    if (name) {
-      session.name = name
-      browser.runtime
-        .sendMessage({
-          action: "updateSession",
-          session,
-        })
-        .then((response) => {
-          sessions = response.sessions
-          document.body.removeChild(modal)
-          renderApp()
-        })
-    }
-  })
+  document.getElementById("save-button").addEventListener("click", saveSession)
 }
 
 function showDeleteSessionModal(sessionId) {
@@ -833,19 +980,29 @@ function showNewProductModal() {
           >
         </div>
 
-        <div class="mb-6" id="has-alternatives-section" style="display:${sessions.find(s => s.id === currentSession).products.length > 0 ? 'block' : 'none'};">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Has alternatives</label>
-          <p class="mt-1 text-sm text-gray-500">If the product can be replaced by another, select which ones.</p>
-
-          <div id="alternatives-list" class="mt-3 space-y-2" style="display:block; max-height:220px; overflow:auto;">
-            ${sessions.find(s => s.id === currentSession).products.map(p => `
-              <div class="flex items-center">
-                <input type="checkbox" id="alt-${p.id}" value="${p.id}" class="alt-checkbox h-4 w-4 accent-gray-800 border-gray-300 rounded focus:ring-gray-500">
-                <label for="alt-${p.id}" class="ml-2 text-sm text-gray-700">${p.name}</label>
-              </div>
-            `).join('')}
-          </div>
+        <div class="mb-6">
+          <label for="product-quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity Needed</label>
+          <input 
+            type="number" 
+            id="product-quantity" 
+            value="1"
+            min="1"
+            step="1"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+          <p class="mt-1 text-sm text-gray-500">How many times this product is needed</p>
         </div>
+
+        <div class="mb-6">
+          <button id="toggle-compatibility" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+            Show Limited Compatibility
+          </button>
+        </div>
+
+
 
         <div class="mb-6" id="limited-compatibility-section" style="display:none;">
           <label class="block text-sm font-medium text-gray-700 mb-1">Limited Compatibility</label>
@@ -873,33 +1030,102 @@ function showNewProductModal() {
 
   document.body.appendChild(modal)
 
-  // Wire alternatives list to show/hide limited compatibility section
-  const altListElNew = document.getElementById('alternatives-list')
-  const limitedSectionNew = document.getElementById('limited-compatibility-section')
-  const compatProductsListNew = document.getElementById('compatible-products-list')
+  // Toggle compatibility section
+  const toggleBtn = document.getElementById('toggle-compatibility')
+  const compatSection = document.getElementById('limited-compatibility-section')
   
-  // Check if any alternatives are selected and show/hide limited compatibility section
-  function updateLimitedCompatibilitySectionNew() {
-    const selectedAlts = Array.from(document.querySelectorAll('#alternatives-list input.alt-checkbox:checked')).length > 0
-    if (limitedSectionNew) limitedSectionNew.style.display = selectedAlts ? 'block' : 'none'
-    if (!selectedAlts && compatProductsListNew) {
-      // Clear compatible products selection if hiding the section
-      document.querySelectorAll('#compatible-products-list input.compat-checkbox:checked').forEach(cb => cb.checked = false)
+  toggleBtn.addEventListener('click', () => {
+    if (compatSection.style.display === 'none') {
+      compatSection.style.display = 'block'
+      toggleBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+        Hide Limited Compatibility
+      `
+    } else {
+      compatSection.style.display = 'none'
+      toggleBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+        Show Limited Compatibility
+      `
+      // Clear selections when hiding? Maybe not, user might just want to collapse it.
     }
-  }
-  
-  // Add listeners to all alternative checkboxes
-  document.querySelectorAll('#alternatives-list input.alt-checkbox').forEach(cb => {
-    cb.addEventListener('change', updateLimitedCompatibilitySectionNew)
   })
+
+  const closeModal = () => {
+    clearAllErrors(modal)
+    document.body.removeChild(modal)
+  }
+
+  const saveProduct = () => {
+    clearAllErrors(modal)
+    
+    // Validate
+    if (!validateRequiredField('product-name', 'Product name')) {
+      return
+    }
+    
+    const name = document.getElementById("product-name").value.trim()
+    const quantity = parseInt(document.getElementById("product-quantity").value) || 1
+
+    // collect compatible products
+    const compatibleProducts = []
+    document.querySelectorAll('#compatible-products-list input.compat-checkbox:checked').forEach(cb => compatibleProducts.push(cb.value))
+
+    // Create product first to get an id, then update reciprocal alternatives
+    browser.runtime
+      .sendMessage({
+        action: "createProduct",
+        sessionId: currentSession,
+        product: {
+          name,
+          quantity,
+          limitedCompatibilityWith: compatibleProducts,
+        },
+      })
+      .then((response) => {
+        // sessions returned with new product
+        sessions = response.sessions
+        const session = sessions.find(s => s.id === currentSession)
+        const newProduct = session.products[session.products.length - 1]
+
+        // If user selected compatible products, ensure bidirectional links
+        if (compatibleProducts.length > 0) {
+          session.products.forEach((prod) => {
+            if (compatibleProducts.includes(prod.id)) {
+              prod.limitedCompatibilityWith = prod.limitedCompatibilityWith || []
+              if (!prod.limitedCompatibilityWith.includes(newProduct.id)) prod.limitedCompatibilityWith.push(newProduct.id)
+            }
+          })
+        }
+
+        // Save updated session if there are bidirectional links to persist
+        if (compatibleProducts.length > 0) {
+          browser.runtime.sendMessage({ action: 'updateSession', sessionId: currentSession, updatedSession: session, session }).then((resp) => {
+            sessions = resp.sessions
+            closeModal()
+            renderApp()
+          })
+        } else {
+          closeModal()
+          renderApp()
+        }
+      })
+  }
+
+  // Setup UX improvements
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, saveProduct)
 
   // Close modal when clicking overlay (and prevent propagation when clicking content)
   const overlayEl = document.getElementById('modalOverlay')
   const contentEl = document.getElementById('modalContent')
   if (overlayEl) {
-    overlayEl.addEventListener('click', () => {
-      document.body.removeChild(modal)
-    })
+    overlayEl.addEventListener('click', closeModal)
   }
   if (contentEl) {
     contentEl.addEventListener('click', (ev) => ev.stopPropagation())
@@ -908,86 +1134,18 @@ function showNewProductModal() {
   // Close button (top-right X)
   const closeBtn = document.getElementById('close-optimization')
   if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      document.body.removeChild(modal)
-    })
+    closeBtn.addEventListener('click', closeModal)
   }
 
-  document.querySelector("#modalOverlay").addEventListener("click", () => {
-    document.body.removeChild(modal)
-  })
+  document.querySelector("#modalOverlay").addEventListener("click", closeModal)
 
   document.querySelector("#modalContent").addEventListener("click", (event) => {
     event.stopPropagation()
   })
 
-  document.getElementById("cancel-button").addEventListener("click", () => {
-    document.body.removeChild(modal)
-  })
+  document.getElementById("cancel-button").addEventListener("click", closeModal)
 
-  document.getElementById("save-button").addEventListener("click", () => {
-    const name = document.getElementById("product-name").value.trim()
-
-    // collect selected alternatives
-    const selectedAlts = []
-    document.querySelectorAll('#alternatives-list input.alt-checkbox:checked').forEach(cb => selectedAlts.push(cb.value))
-
-    // collect compatible products
-    const compatibleProducts = []
-    document.querySelectorAll('#compatible-products-list input.compat-checkbox:checked').forEach(cb => compatibleProducts.push(cb.value))
-
-    if (name) {
-      // Create product first to get an id, then update reciprocal alternatives
-      browser.runtime
-        .sendMessage({
-          action: "createProduct",
-          sessionId: currentSession,
-          product: {
-            name,
-            alternatives: selectedAlts,
-            limitedCompatibilityWith: compatibleProducts,
-          },
-        })
-        .then((response) => {
-          // sessions returned with new product
-          sessions = response.sessions
-          const session = sessions.find(s => s.id === currentSession)
-          const newProduct = session.products[session.products.length - 1]
-
-          // If user selected alternatives, ensure bidirectional links
-          if (selectedAlts.length > 0) {
-            session.products.forEach((prod) => {
-              if (selectedAlts.includes(prod.id)) {
-                prod.alternatives = prod.alternatives || []
-                if (!prod.alternatives.includes(newProduct.id)) prod.alternatives.push(newProduct.id)
-              }
-            })
-          }
-
-          // If user selected compatible products, ensure bidirectional links
-          if (compatibleProducts.length > 0) {
-            session.products.forEach((prod) => {
-              if (compatibleProducts.includes(prod.id)) {
-                prod.limitedCompatibilityWith = prod.limitedCompatibilityWith || []
-                if (!prod.limitedCompatibilityWith.includes(newProduct.id)) prod.limitedCompatibilityWith.push(newProduct.id)
-              }
-            })
-          }
-
-          // Save updated session if there are bidirectional links to persist
-          if (selectedAlts.length > 0 || compatibleProducts.length > 0) {
-            browser.runtime.sendMessage({ action: 'updateSession', sessionId: currentSession, updatedSession: session, session }).then((resp) => {
-              sessions = resp.sessions
-              document.body.removeChild(modal)
-              renderApp()
-            })
-          } else {
-            document.body.removeChild(modal)
-            renderApp()
-          }
-        })
-    }
-  })
+  document.getElementById("save-button").addEventListener("click", saveProduct)
 }
 
 function showEditProductModal(product) {
@@ -1008,19 +1166,40 @@ function showEditProductModal(product) {
           >
         </div>
 
-        <div class="mb-6" id="has-alternatives-section" style="display:${sessions.find(s => s.id === currentSession).products.length > 1 ? 'block' : 'none'};">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Has alternatives</label>
-          <p class="mt-1 text-sm text-gray-500">If the product can be replaced by another, select which ones.</p>
-
-          <div id="alternatives-list" class="mt-3 space-y-2" style="display:block; max-height:220px; overflow:auto;">
-            ${sessions.find(s => s.id === currentSession).products.filter(p => p.id !== product.id).map(p => `
-              <div class="flex items-center">
-                <input type="checkbox" id="alt-${p.id}" value="${p.id}" class="alt-checkbox h-4 w-4 accent-gray-800 border-gray-300 rounded focus:ring-gray-500" ${product.alternatives && product.alternatives.includes(p.id) ? 'checked' : ''}>
-                <label for="alt-${p.id}" class="ml-2 text-sm text-gray-700">${p.name}</label>
-              </div>
-            `).join('')}
-          </div>
+        <div class="mb-6">
+          <label for="product-quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity Needed</label>
+          <input 
+            type="number" 
+            id="product-quantity" 
+            value="${product.quantity || 1}"
+            min="1"
+            step="1"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+          <p class="mt-1 text-sm text-gray-500">How many times this product is needed</p>
         </div>
+
+        ${sessions.find(s => s.id === currentSession).alternativeGroups && sessions.find(s => s.id === currentSession).alternativeGroups.some(g => g.options.some(opt => opt.productIds.includes(product.id))) ? `
+          <div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div class="flex">
+              <svg class="h-5 w-5 text-amber-400 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+              <p class="text-sm text-amber-800">This product is part of alternative groups. The group quantity may override this value during optimization.</p>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="mb-6">
+          <button id="toggle-compatibility" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+            Show Limited Compatibility
+          </button>
+        </div>
+
+
 
         <div class="mb-6" id="limited-compatibility-section" style="display:none;">
           <label class="block text-sm font-medium text-gray-700 mb-1">Limited Compatibility</label>
@@ -1048,38 +1227,60 @@ function showEditProductModal(product) {
 
   document.body.appendChild(modal)
 
-  // Setup limited compatibility section visibility based on selected alternatives
-  const limitedSectionEdit = document.getElementById('limited-compatibility-section')
-  const compatProductsListEdit = document.getElementById('compatible-products-list')
-
-  // Check if any alternatives are selected and show/hide limited compatibility section
-  function updateLimitedCompatibilitySectionEdit() {
-    const selectedAlts = Array.from(document.querySelectorAll('#alternatives-list input.alt-checkbox:checked')).length > 0
-    if (limitedSectionEdit) limitedSectionEdit.style.display = selectedAlts ? 'block' : 'none'
-    if (!selectedAlts && compatProductsListEdit) {
-      // Clear compatible products selection if hiding the section
-      document.querySelectorAll('#compatible-products-list input.compat-checkbox:checked').forEach(cb => cb.checked = false)
-    }
+  // Toggle compatibility section
+  const toggleBtn = document.getElementById('toggle-compatibility')
+  const compatSection = document.getElementById('limited-compatibility-section')
+  
+  // Initialize state based on whether there are existing selections
+  const hasSelections = product.limitedCompatibilityWith && product.limitedCompatibilityWith.length > 0
+  if (hasSelections) {
+    compatSection.style.display = 'block'
+    toggleBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+      </svg>
+      Hide Limited Compatibility
+    `
   }
 
-  // Add listeners to all alternative checkboxes
-  document.querySelectorAll('#alternatives-list input.alt-checkbox').forEach(cb => {
-    cb.addEventListener('change', updateLimitedCompatibilitySectionEdit)
+  toggleBtn.addEventListener('click', () => {
+    if (compatSection.style.display === 'none') {
+      compatSection.style.display = 'block'
+      toggleBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+        Hide Limited Compatibility
+      `
+    } else {
+      compatSection.style.display = 'none'
+      toggleBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+        Show Limited Compatibility
+      `
+    }
   })
 
-  document.getElementById("cancel-button").addEventListener("click", () => {
+
+
+  const closeModal = () => {
+    clearAllErrors(modal)
     document.body.removeChild(modal)
-  })
+  }
 
-  document.getElementById("save-button").addEventListener("click", () => {
-    const name = document.getElementById("product-name").value.trim()
+  const saveProduct = () => {
+    clearAllErrors(modal)
     
-    // collect selected alternatives
-    const selectedAlts = []
-    document.querySelectorAll('#alternatives-list input.alt-checkbox:checked').forEach(cb => {
-      if (cb.disabled) return
-      selectedAlts.push(cb.value)
-    })
+    // Validate
+    if (!validateRequiredField('product-name', 'Product name')) {
+      return
+    }
+    
+    const name = document.getElementById("product-name").value.trim()
+    const quantity = parseInt(document.getElementById("product-quantity").value) || 1
+    
 
     // collect compatible products
     const compatibleProducts = []
@@ -1088,49 +1289,52 @@ function showEditProductModal(product) {
       compatibleProducts.push(cb.value)
     })
 
-    if (name) {
-      const session = sessions.find(s => s.id === currentSession)
+    const session = sessions.find(s => s.id === currentSession)
 
-      // update product fields
-      const prod = session.products.find(p => p.id === product.id)
-      if (!prod) return
-      prod.name = name
-      prod.alternatives = selectedAlts
-      prod.limitedCompatibilityWith = compatibleProducts
+    // update product fields
+    const prod = session.products.find(p => p.id === product.id)
+    if (!prod) return
+    prod.name = name
+    prod.quantity = quantity
+    prod.limitedCompatibilityWith = compatibleProducts
 
-      // Ensure bidirectional links: for each product in session, add/remove reciprocal
-      session.products.forEach((other) => {
-        if (other.id === prod.id) return
-        
-        // Handle alternatives bidirectional link
-        other.alternatives = other.alternatives || []
-        const shouldIncludeAlt = selectedAlts.includes(other.id)
-        const currentlyHasAlt = other.alternatives.includes(prod.id)
-        if (shouldIncludeAlt && !currentlyHasAlt) {
-          other.alternatives.push(prod.id)
-        } else if (!shouldIncludeAlt && currentlyHasAlt) {
-          other.alternatives = other.alternatives.filter(x => x !== prod.id)
-        }
+    // Ensure bidirectional links: for each product in session, add/remove reciprocal
+    session.products.forEach((other) => {
+      if (other.id === prod.id) return
 
-        // Handle limitedCompatibilityWith bidirectional link
-        other.limitedCompatibilityWith = other.limitedCompatibilityWith || []
-        const shouldIncludeCompat = compatibleProducts.includes(other.id)
-        const currentlyHasCompat = other.limitedCompatibilityWith.includes(prod.id)
-        if (shouldIncludeCompat && !currentlyHasCompat) {
-          other.limitedCompatibilityWith.push(prod.id)
-        } else if (!shouldIncludeCompat && currentlyHasCompat) {
-          other.limitedCompatibilityWith = other.limitedCompatibilityWith.filter(x => x !== prod.id)
-        }
-      })
+      // Handle limitedCompatibilityWith bidirectional link
+      other.limitedCompatibilityWith = other.limitedCompatibilityWith || []
+      const shouldIncludeCompat = compatibleProducts.includes(other.id)
+      const currentlyHasCompat = other.limitedCompatibilityWith.includes(prod.id)
+      if (shouldIncludeCompat && !currentlyHasCompat) {
+        other.limitedCompatibilityWith.push(prod.id)
+      } else if (!shouldIncludeCompat && currentlyHasCompat) {
+        other.limitedCompatibilityWith = other.limitedCompatibilityWith.filter(x => x !== prod.id)
+      }
+    })
 
-      // Save entire session to persist reciprocal changes
-  browser.runtime.sendMessage({ action: 'updateSession', sessionId: currentSession, updatedSession: session, session }).then((response) => {
-        sessions = response.sessions
-        document.body.removeChild(modal)
-        renderApp()
-      })
-    }
+    // Save entire session to persist reciprocal changes
+    browser.runtime.sendMessage({ action: 'updateSession', sessionId: currentSession, updatedSession: session, session }).then((response) => {
+      sessions = response.sessions
+      closeModal()
+      renderApp()
+    })
+  }
+
+  // Setup UX improvements
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, saveProduct)
+
+  // Close modal when clicking overlay
+  document.querySelector("#modalOverlay")?.addEventListener("click", closeModal)
+  document.querySelector("#modalContent")?.addEventListener("click", (event) => {
+    event.stopPropagation()
   })
+
+  document.getElementById("cancel-button").addEventListener("click", closeModal)
+
+  document.getElementById("save-button").addEventListener("click", saveProduct)
 }
 
 function showEditPageModal(page) {
@@ -1199,6 +1403,33 @@ function showEditPageModal(page) {
           >
         </div>
 
+        <div class="mb-6">
+          <label for="items-per-purchase" class="block text-sm font-medium text-gray-700 mb-1">Items per Purchase</label>
+          <input 
+            type="number" 
+            id="items-per-purchase" 
+            value="${page.itemsPerPurchase || 1}"
+            min="1"
+            step="1"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+          <p class="mt-1 text-sm text-gray-500">How many items are included in one purchase (e.g., 2 for a pack of 2)</p>
+        </div>
+
+        <div class="mb-6">
+          <label for="max-per-purchase" class="block text-sm font-medium text-gray-700 mb-1">Max per Purchase (Optional)</label>
+          <input 
+            type="number" 
+            id="max-per-purchase" 
+            value="${page.maxPerPurchase || ""}"
+            min="1"
+            step="1"
+            placeholder="Leave empty if unlimited"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+          <p class="mt-1 text-sm text-gray-500">Maximum number of times you can purchase from this page</p>
+        </div>
+
         <div class="flex justify-end space-x-4">
           <button id="cancel-button" class="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 cursor-pointer rounded">Cancel</button>
           <button id="save-button" class="px-4 py-2 bg-gray-800 text-white font-medium cursor-pointer rounded flex items-center">
@@ -1211,29 +1442,53 @@ function showEditPageModal(page) {
 
   document.body.appendChild(modal)
 
-  document.querySelector("#modalOverlay").addEventListener("click", () => {
+  const closeModal = () => {
+    clearAllErrors(modal)
     document.body.removeChild(modal)
-  })
+  }
 
-  document.querySelector("#modalContent").addEventListener("click", (event) => {
-    event.stopPropagation()
-  })
+  const savePage = () => {
+    clearAllErrors(modal)
 
-  document.getElementById("cancel-button").addEventListener("click", () => {
-    document.body.removeChild(modal)
-  })
-
-  document.getElementById("save-button").addEventListener("click", () => {
     const price = document.getElementById("page-price").value
     const shippingPrice = document.getElementById("page-shipping").value
     const seller = document.getElementById("page-seller").value
     const currency = document.getElementById("page-currency").value
+    const itemsPerPurchaseValue = document.getElementById("items-per-purchase").value
+    const itemsPerPurchase = itemsPerPurchaseValue ? parseInt(itemsPerPurchaseValue) : null
+    const maxPerPurchaseValue = document.getElementById("max-per-purchase").value
+    const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
+
+    // Validation
+    let isValid = true
+    if (currency !== 'FREE') {
+      if (!validateRequiredField('page-price', 'Price')) isValid = false
+      if (!validateRequiredField('page-shipping', 'Shipping price')) isValid = false
+    }
+    if (!validateRequiredField('page-seller', 'Seller')) isValid = false
+    
+    if (!itemsPerPurchaseValue) {
+      showFieldError('items-per-purchase', 'Items per purchase is required')
+      isValid = false
+    } else if (itemsPerPurchase < 1) {
+      showFieldError('items-per-purchase', 'Must be at least 1')
+      isValid = false
+    }
+
+    if (maxPerPurchase !== null && maxPerPurchase < 1) {
+      showFieldError('max-per-purchase', 'Must be at least 1')
+      isValid = false
+    }
+    
+    if (!isValid) return
 
     const updatedPage = {
       price,
       shippingPrice,
       seller,
       currency,
+      itemsPerPurchase,
+      ...(maxPerPurchase !== null && { maxPerPurchase }),
     }
 
     browser.runtime
@@ -1246,10 +1501,23 @@ function showEditPageModal(page) {
       })
       .then((response) => {
         sessions = response.sessions
-        document.body.removeChild(modal)
+        closeModal()
         renderApp()
       })
+  }
+
+  // Setup UX improvements
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, savePage)
+
+  document.querySelector("#modalOverlay")?.addEventListener("click", closeModal)
+  document.querySelector("#modalContent")?.addEventListener("click", (event) => {
+    event.stopPropagation()
   })
+
+  document.getElementById("cancel-button").addEventListener("click", closeModal)
+  document.getElementById("save-button").addEventListener("click", savePage)
 }
 
 function showEditBundleModal(bundle) {
@@ -1277,17 +1545,31 @@ function showEditBundleModal(bundle) {
           <div class="space-y-2">
             ${session.products
               .map(
-                (p) => `
-              <div class="flex items-center">
+                (p) => {
+                  const bundleProduct = bundle.products && bundle.products.find(bp => bp.productId === p.id)
+                  const isChecked = !!bundleProduct
+                  const productQty = bundleProduct ? bundleProduct.quantity : 1
+                  
+                  return `
+              <div class="flex items-center space-x-2">
                 <input type="checkbox" 
                   id="product-${p.id}" 
                   value="${p.id}" 
-                  ${bundle.products.includes(p.id) ? "checked" : ""}
-                  class="h-4 w-4 accent-gray-800 border-gray-300 rounded focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  ${isChecked ? "checked" : ""}
+                  class="bundle-edit-checkbox h-4 w-4 accent-gray-800 border-gray-300 rounded focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                 >
-                <label for="product-${p.id}" class="ml-2 text-sm text-gray-700">${p.name}</label>
+                <label for="product-${p.id}" class="flex-1 text-sm text-gray-700">${p.name}</label>
+                <input type="number" 
+                  id="bundle-product-qty-${p.id}" 
+                  min="1" 
+                  step="1" 
+                  value="${productQty}"
+                  class="bundle-edit-qty w-20 px-2 py-1 border border-gray-300 rounded text-sm ${isChecked ? '' : 'hidden'}"
+                  placeholder="Qty"
+                >
               </div>
-            `,
+            `
+                }
               )
               .join("")}
           </div>
@@ -1340,6 +1622,33 @@ function showEditBundleModal(bundle) {
           >
         </div>
 
+        <div class="mb-6">
+          <label for="items-per-purchase" class="block text-sm font-medium text-gray-700 mb-1">Items per Purchase</label>
+          <input 
+            type="number" 
+            id="items-per-purchase" 
+            value="${bundle.itemsPerPurchase || 1}"
+            min="1"
+            step="1"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+          <p class="mt-1 text-sm text-gray-500">How many items are included in one purchase</p>
+        </div>
+
+        <div class="mb-6">
+          <label for="max-per-purchase" class="block text-sm font-medium text-gray-700 mb-1">Max per Purchase (Optional)</label>
+          <input 
+            type="number" 
+            id="max-per-purchase" 
+            value="${bundle.maxPerPurchase || ""}"
+            min="1"
+            step="1"
+            placeholder="Leave empty if unlimited"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+          <p class="mt-1 text-sm text-gray-500">Maximum number of times you can purchase from this bundle</p>
+        </div>
+
         <div class="flex justify-end space-x-4">
           <button id="cancel-button" class="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 cursor-pointer rounded">Cancel</button>
           <button id="save-button" class="px-4 py-2 bg-gray-800 text-white font-medium cursor-pointer rounded flex items-center">
@@ -1352,27 +1661,63 @@ function showEditBundleModal(bundle) {
 
   document.body.appendChild(modal)
 
-  document.querySelector("#modalOverlay").addEventListener("click", () => {
+  // Toggle quantity input visibility when checkbox changes
+  document.querySelectorAll('.bundle-edit-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', (e) => {
+      const productId = e.target.value
+      const qtyInput = document.getElementById(`bundle-product-qty-${productId}`)
+      if (qtyInput) {
+        qtyInput.classList.toggle('hidden', !e.target.checked)
+      }
+    })
+  })
+
+  const closeModal = () => {
+    clearAllErrors(modal)
     document.body.removeChild(modal)
-  })
+  }
 
-  document.querySelector("#modalContent").addEventListener("click", (event) => {
-    event.stopPropagation()
-  })
+  const saveBundle = () => {
+    clearAllErrors(modal)
 
-  document.getElementById("cancel-button").addEventListener("click", () => {
-    document.body.removeChild(modal)
-  })
-
-  document.getElementById("save-button").addEventListener("click", () => {
     const price = document.getElementById("page-price").value
     const shippingPrice = document.getElementById("page-shipping").value
     const seller = document.getElementById("page-seller").value
     const currency = document.getElementById("page-currency").value
+    const itemsPerPurchaseValue = document.getElementById("items-per-purchase").value
+    const itemsPerPurchase = itemsPerPurchaseValue ? parseInt(itemsPerPurchaseValue) : null
+    const maxPerPurchaseValue = document.getElementById("max-per-purchase").value
+    const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
     
+    // Validation
+    let isValid = true
+    if (currency !== 'FREE') {
+      if (!validateRequiredField('page-price', 'Price')) isValid = false
+      if (!validateRequiredField('page-shipping', 'Shipping price')) isValid = false
+    }
+    if (!validateRequiredField('page-seller', 'Seller')) isValid = false
+    
+    if (!itemsPerPurchaseValue) {
+      showFieldError('items-per-purchase', 'Items per purchase is required')
+      isValid = false
+    } else if (itemsPerPurchase < 1) {
+      showFieldError('items-per-purchase', 'Must be at least 1')
+      isValid = false
+    }
+
+    if (maxPerPurchase !== null && maxPerPurchase < 1) {
+      showFieldError('max-per-purchase', 'Must be at least 1')
+      isValid = false
+    }
+    
+    if (!isValid) return
+
     const products = []
-    document.querySelectorAll('#modalContent input[type="checkbox"]:checked').forEach((checkbox) => {
-      products.push(checkbox.value)
+    document.querySelectorAll('.bundle-edit-checkbox:checked').forEach((checkbox) => {
+      const productId = checkbox.value
+      const qtyInput = document.getElementById(`bundle-product-qty-${productId}`)
+      const quantity = qtyInput ? parseInt(qtyInput.value) || 1 : 1
+      products.push({ productId, quantity })
     })
 
     const updatedBundle = {
@@ -1381,6 +1726,8 @@ function showEditBundleModal(bundle) {
       seller,
       currency,
       products,
+      itemsPerPurchase,
+      ...(maxPerPurchase !== null && { maxPerPurchase }),
     }
 
     browser.runtime
@@ -1392,10 +1739,23 @@ function showEditBundleModal(bundle) {
       })
       .then((response) => {
         sessions = response.sessions
-        document.body.removeChild(modal)
+        closeModal()
         renderApp()
       })
+  }
+
+  // Setup UX improvements
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, saveBundle)
+
+  document.querySelector("#modalOverlay")?.addEventListener("click", closeModal)
+  document.querySelector("#modalContent")?.addEventListener("click", (event) => {
+    event.stopPropagation()
   })
+
+  document.getElementById("cancel-button").addEventListener("click", closeModal)
+  document.getElementById("save-button").addEventListener("click", saveBundle)
 }
 
 function showDeleteBundleModal(bundleId) {
@@ -1580,14 +1940,22 @@ function showScrapedDataModal() {
             ${session.products
               .map(
                 (p) => `
-              <div class="flex items-center">
+              <div class="flex items-center space-x-2">
                 <input type="checkbox" 
                   id="product-${p.id}" 
                   value="${p.id}" 
                   ${p.id === product.id ? "checked disabled" : ""}
-                  class="h-4 w-4 accent-gray-800 border-gray-300 rounded focus:ring-gray-500"
+                  class="bundle-product-checkbox h-4 w-4 accent-gray-800 border-gray-300 rounded focus:ring-gray-500"
                 >
-                <label for="product-${p.id}" class="ml-2 text-sm text-gray-700">${p.name}</label>
+                <label for="product-${p.id}" class="flex-1 text-sm text-gray-700">${p.name}</label>
+                <input type="number" 
+                  id="product-qty-${p.id}" 
+                  min="1" 
+                  step="1" 
+                  value="1"
+                  class="bundle-product-qty w-20 px-2 py-1 border border-gray-300 rounded text-sm ${p.id === product.id ? '' : 'hidden'}"
+                  placeholder="Qty"
+                >
               </div>
             `,
               )
@@ -1757,6 +2125,33 @@ function showScrapedDataModal() {
           >
         </div>
 
+        <div class="mb-6">
+          <label for="items-per-purchase" class="block text-sm font-medium text-gray-700 mb-1">Items per Purchase</label>
+          <input 
+            type="number" 
+            id="items-per-purchase" 
+            value="1"
+            min="1"
+            step="1"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+          <p class="mt-1 text-sm text-gray-500">How many items are included in one purchase (e.g., 2 for a pack of 2)</p>
+        </div>
+
+        <div class="mb-6">
+          <label for="max-per-purchase" class="block text-sm font-medium text-gray-700 mb-1">Max per Purchase (Optional)</label>
+          <input 
+            type="number" 
+            id="max-per-purchase" 
+            value=""
+            min="1"
+            step="1"
+            placeholder="Leave empty if unlimited"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+          <p class="mt-1 text-sm text-gray-500">Maximum number of times you can purchase from this page</p>
+        </div>
+
         <div class="flex justify-end space-x-4">
           <button id="cancel-button" class="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 cursor-pointer rounded">Cancel</button>
           <button id="save-button" class="px-4 py-2 bg-gray-800 text-white font-medium cursor-pointer rounded flex items-center">
@@ -1779,18 +2174,59 @@ function showScrapedDataModal() {
     }
   })
 
-  document.getElementById("cancel-button").addEventListener("click", () => {
-    document.body.removeChild(modal)
-    scrapedData = null
+  // Toggle quantity input visibility when checkbox changes
+  document.querySelectorAll('.bundle-product-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', (e) => {
+      const productId = e.target.value
+      const qtyInput = document.getElementById(`product-qty-${productId}`)
+      if (qtyInput && !e.target.disabled) {
+        qtyInput.classList.toggle('hidden', !e.target.checked)
+      }
+    })
   })
 
-  document.getElementById("save-button").addEventListener("click", () => {
+  const closeModal = () => {
+    clearAllErrors(modal)
+    document.body.removeChild(modal)
+    scrapedData = null
+  }
+
+  const saveScrapedData = () => {
+    clearAllErrors(modal)
+
     const isBundle = document.getElementById("is-bundle").checked
     const url = document.getElementById("page-url").value
     const price = document.getElementById("page-price").value
     const shippingPrice = document.getElementById("page-shipping").value
     const seller = document.getElementById("page-seller").value
     const currency = document.getElementById("page-currency").value
+    const itemsPerPurchaseValue = document.getElementById("items-per-purchase").value
+    const itemsPerPurchase = itemsPerPurchaseValue ? parseInt(itemsPerPurchaseValue) : null
+    const maxPerPurchaseValue = document.getElementById("max-per-purchase").value
+    const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
+
+    // Validation
+    let isValid = true
+    if (currency !== 'FREE') {
+      if (!validateRequiredField('page-price', 'Price')) isValid = false
+      if (!validateRequiredField('page-shipping', 'Shipping price')) isValid = false
+    }
+    if (!validateRequiredField('page-seller', 'Seller')) isValid = false
+    
+    if (!itemsPerPurchaseValue) {
+      showFieldError('items-per-purchase', 'Items per purchase is required')
+      isValid = false
+    } else if (itemsPerPurchase < 1) {
+      showFieldError('items-per-purchase', 'Must be at least 1')
+      isValid = false
+    }
+
+    if (maxPerPurchase !== null && maxPerPurchase < 1) {
+      showFieldError('max-per-purchase', 'Must be at least 1')
+      isValid = false
+    }
+    
+    if (!isValid) return
 
     if (isBundle) {
       const bundle = {
@@ -1799,12 +2235,17 @@ function showScrapedDataModal() {
         shippingPrice,
         seller,
         currency,
+        itemsPerPurchase,
+        ...(maxPerPurchase !== null && { maxPerPurchase }),
         products: [],
         timestamp: new Date().toISOString(),
       }
       
-      document.querySelectorAll('#product-selection input[type="checkbox"]:checked').forEach((checkbox) => {
-        bundle.products.push(checkbox.value)
+      document.querySelectorAll('#product-selection .bundle-product-checkbox:checked').forEach((checkbox) => {
+        const productId = checkbox.value
+        const qtyInput = document.getElementById(`product-qty-${productId}`)
+        const quantity = qtyInput ? parseInt(qtyInput.value) || 1 : 1
+        bundle.products.push({ productId, quantity })
       })
 
       browser.runtime
@@ -1815,8 +2256,7 @@ function showScrapedDataModal() {
         })
         .then((response) => {
           sessions = response.sessions
-          document.body.removeChild(modal)
-          scrapedData = null
+          closeModal()
 
           // Show product details again
           currentView = "pages"
@@ -1829,6 +2269,8 @@ function showScrapedDataModal() {
         shippingPrice,
         seller,
         currency,
+        itemsPerPurchase,
+        ...(maxPerPurchase !== null && { maxPerPurchase }),
         timestamp: new Date().toISOString(),
       }
 
@@ -1841,14 +2283,27 @@ function showScrapedDataModal() {
         })
         .then((response) => {
           sessions = response.sessions
-          document.body.removeChild(modal)
-          scrapedData = null
+          closeModal()
 
           // Show product details again
           currentView = "pages"
           renderApp()
         })
     }
+  }
+
+  // Setup UX improvements
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, saveScrapedData)
+
+  document.getElementById("cancel-button").addEventListener("click", closeModal)
+  document.getElementById("save-button").addEventListener("click", saveScrapedData)
+  
+  // Close modal when clicking overlay
+  document.querySelector("#modalOverlay")?.addEventListener("click", closeModal)
+  document.querySelector("#modalContent")?.addEventListener("click", (event) => {
+    event.stopPropagation()
   })
 }
 
@@ -2238,14 +2693,532 @@ function importSession() {
              });
           });
 
-        } catch (error) {
-          console.error("Error importing session:", error);
-          alert("Error importing session");
+        } catch (err) {
+          alert("Error parsing session file: " + err.message);
         }
      }
   }
   
   input.click();
+}
+
+function renderAlternativesView() {
+  const session = sessions.find((s) => s.id === currentSession)
+  if (!session) {
+    currentView = "sessions"
+    renderApp()
+    return
+  }
+  
+  const groups = session.alternativeGroups || []
+
+  app.innerHTML = `
+    <div class="mx-4">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-3">
+        <div class="flex items-center space-x-3">
+          <button class="text-gray-600 p-2 cursor-pointer" id="back-button">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
+          <h1 class="text-2xl pl-4 font-semibold text-gray-800">Alternative Groups</h1>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        ${groups.length > 0 ? groups.map(group => `
+          <div class="bg-white rounded-xl shadow-md p-4 group-item">
+            <div class="flex justify-between items-start">
+              <div class="flex-1 min-w-0 mr-4">
+                <h2 class="text-xl font-medium text-gray-800 truncate">${group.name}</h2>
+                <div class="mt-2 space-y-1">
+                  ${group.options.map((opt, idx) => `
+                    <div class="text-sm text-gray-600">
+                      <span class="font-medium">Option ${idx + 1}:</span> 
+                      ${opt.products ? opt.products.map(p => {
+                        const prod = session.products.find(product => product.id === p.productId)
+                        const qty = p.quantity > 1 ? ` (×${p.quantity})` : ''
+                        return prod ? `${prod.name}${qty}` : 'Unknown Product'
+                      }).join(' + ') : 'No products'}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              <div class="flex space-x-2 flex-shrink-0">
+                <button class="text-gray-600 p-1 cursor-pointer edit-group-button" data-id="${group.id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                <button class="text-gray-600 p-1 cursor-pointer delete-group-button" data-id="${group.id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('') : '<div class="text-center text-gray-500 py-8">No alternative groups created yet</div>'}
+      </div>
+
+      <button id="new-group-button" class="w-full mt-6 flex items-center justify-center space-x-2 cursor-pointer bg-gray-800 text-white px-4 py-3 rounded-xl hover:bg-gray-700 transition-colors duration-200 shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        <span class="text-lg font-medium">New Alternative Group</span>
+      </button>
+    </div>
+  `
+
+  document.getElementById("back-button").addEventListener("click", () => {
+    currentView = "products"
+    renderApp()
+  })
+
+  document.getElementById("new-group-button").addEventListener("click", () => {
+    showNewAlternativeGroupModal()
+  })
+
+  document.querySelectorAll(".edit-group-button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const groupId = btn.dataset.id
+      const group = session.alternativeGroups.find(g => g.id === groupId)
+      showEditAlternativeGroupModal(group)
+    })
+  })
+
+  document.querySelectorAll(".delete-group-button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const groupId = btn.dataset.id
+      showDeleteAlternativeGroupModal(groupId)
+    })
+  })
+}
+
+// Alternative Group Modals
+function showNewAlternativeGroupModal() {
+  const session = sessions.find((s) => s.id === currentSession)
+  const products = session.products
+
+  const modal = document.createElement("div")
+  modal.innerHTML = `
+    <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 p-6 flex flex-col max-h-[90vh]">
+        <h3 class="text-lg font-medium text-gray-800 mb-4">New Alternative Group</h3>
+        
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
+          <input type="text" id="group-name" placeholder="e.g., Gaming Setup" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+        </div>
+
+        <div class="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div class="flex">
+            <svg class="h-5 w-5 text-blue-400 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+            <p class="text-sm text-blue-800">Each product in an option can have its own quantity. This will override the product's default quantity.</p>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Options</label>
+          <div id="options-container" class="space-y-4">
+            <!-- Options will be added here -->
+          </div>
+          <button id="add-option-button" class="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Option
+          </button>
+        </div>
+
+        <div class="flex justify-end space-x-4 pt-4 border-t">
+          <button id="cancel-button" class="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 cursor-pointer rounded">Cancel</button>
+          <button id="save-button" class="px-4 py-2 bg-gray-800 text-white font-medium cursor-pointer rounded flex items-center">Save</button>
+        </div>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  let optionCount = 0
+  const addOption = (initialProducts = []) => {
+    optionCount++
+    const optionId = `option-${Date.now()}-${optionCount}`
+    const div = document.createElement('div')
+    div.className = "bg-gray-50 p-3 rounded-lg border border-gray-200 relative"
+    div.innerHTML = `
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-sm font-semibold text-gray-700">Option ${optionCount}</span>
+        <button class="text-red-500 hover:text-red-700 remove-option-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="space-y-2 max-h-64 overflow-y-auto">
+        ${products.map(p => {
+          const initialProd = initialProducts.find(ip => ip.productId === p.id)
+          return `
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="${optionId}-prod-${p.id}" value="${p.id}" class="product-checkbox h-4 w-4 accent-gray-800 border-gray-300 rounded focus:ring-gray-500" ${initialProd ? 'checked' : ''}>
+            <label for="${optionId}-prod-${p.id}" class="flex-1 text-sm text-gray-700 truncate">${p.name}</label>
+            <input type="number" id="${optionId}-qty-${p.id}" min="1" step="1" value="${initialProd ? initialProd.quantity : 1}" class="qty-input w-16 px-2 py-1 border border-gray-300 rounded text-sm ${initialProd ? '' : 'hidden'}">
+          </div>
+        `}).join('')}
+      </div>
+    `
+    
+    div.querySelector('.remove-option-btn').addEventListener('click', () => {
+      div.remove()
+    })
+
+    // Toggle quantity input visibility when checkbox changes
+    div.querySelectorAll('.product-checkbox').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const prodId = e.target.value
+        const qtyInput = div.querySelector(`#${optionId}-qty-${prodId}`)
+        if (qtyInput) {
+          qtyInput.classList.toggle('hidden', !e.target.checked)
+        }
+      })
+    })
+
+    document.getElementById('options-container').appendChild(div)
+  }
+
+  // Add two initial empty options
+  addOption()
+  addOption()
+
+  document.getElementById('add-option-button').addEventListener('click', () => addOption())
+
+  // Modal closing logic
+  const closeModal = () => {
+    clearAllErrors(modal)
+    document.body.removeChild(modal)
+  }
+
+  const saveGroup = () => {
+    clearAllErrors(modal)
+
+    // Validate Group Name
+    if (!validateRequiredField('group-name', 'Group Name')) {
+      return
+    }
+
+    const name = document.getElementById('group-name').value.trim()
+
+    const options = []
+    let hasEmptyOption = false
+    document.querySelectorAll('#options-container > div').forEach(optDiv => {
+      const products = []
+      optDiv.querySelectorAll('.product-checkbox:checked').forEach(cb => {
+        const productId = cb.value
+        const qtyInput = optDiv.querySelector(`[id$="-qty-${productId}"]`)
+        const quantity = qtyInput ? parseInt(qtyInput.value) || 1 : 1
+        products.push({ productId, quantity })
+      })
+      
+      if (products.length > 0) {
+        options.push({ products })
+      } else {
+        // Mark empty options visually? Or just ignore them but warn if total valid options < 2
+        // Let's mark them as invalid if we need to enforce "at least 1 product per option" for *existing* option blocks
+        // But maybe user added an option block and didn't select anything yet.
+        // The requirement is "dont au moins 1 par option et au moins 2 options"
+        // So every visible option block MUST have at least 1 product? Or we just filter out empty ones?
+        // "dont au moins 1 par option" suggests every defined option must be valid.
+        optDiv.classList.add('border-red-500')
+        hasEmptyOption = true
+      }
+    })
+
+    if (hasEmptyOption) {
+      // Show a general error or alert?
+      // Let's add a message at the bottom
+      const container = document.getElementById('options-container')
+      let errorMsg = container.nextElementSibling
+      if (!errorMsg || !errorMsg.classList.contains('field-error-message')) {
+        errorMsg = document.createElement('p')
+        errorMsg.className = 'field-error-message text-sm text-red-600 mt-1'
+        container.parentNode.insertBefore(errorMsg, container.nextSibling)
+      }
+      errorMsg.textContent = 'Each option must have at least one product selected.'
+      return
+    } else {
+      // Clear error
+      const container = document.getElementById('options-container')
+      const errorMsg = container.nextElementSibling
+      if (errorMsg && errorMsg.classList.contains('field-error-message')) {
+        errorMsg.remove()
+      }
+      document.querySelectorAll('#options-container > div').forEach(d => d.classList.remove('border-red-500'))
+    }
+
+    if (options.length < 2) {
+      const container = document.getElementById('options-container')
+      let errorMsg = container.nextElementSibling
+      if (!errorMsg || !errorMsg.classList.contains('field-error-message')) {
+        errorMsg = document.createElement('p')
+        errorMsg.className = 'field-error-message text-sm text-red-600 mt-1'
+        container.parentNode.insertBefore(errorMsg, container.nextSibling)
+      }
+      errorMsg.textContent = 'Please add at least two options with selected products.'
+      return
+    }
+
+    browser.runtime.sendMessage({
+      action: "createAlternativeGroup",
+      sessionId: currentSession,
+      group: { name, options }
+    }).then(response => {
+      sessions = response.sessions
+      closeModal()
+      renderAlternativesView()
+    })
+  }
+
+  // Setup UX improvements
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, saveGroup)
+
+  document.getElementById('modalOverlay').addEventListener('click', closeModal)
+  document.getElementById('modalContent').addEventListener('click', e => e.stopPropagation())
+  document.getElementById('cancel-button').addEventListener('click', closeModal)
+  document.getElementById('save-button').addEventListener('click', saveGroup)
+}
+
+function showEditAlternativeGroupModal(group) {
+  const session = sessions.find((s) => s.id === currentSession)
+  const products = session.products
+
+  const modal = document.createElement("div")
+  modal.innerHTML = `
+    <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 p-6 flex flex-col max-h-[90vh]">
+        <h3 class="text-lg font-medium text-gray-800 mb-4">Edit Alternative Group</h3>
+        
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
+          <input type="text" id="group-name" value="${group.name}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+        </div>
+
+        <div class="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div class="flex">
+            <svg class="h-5 w-5 text-blue-400 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+            <p class="text-sm text-blue-800">Each product in an option can have its own quantity. This will override the product's default quantity.</p>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Options</label>
+          <div id="options-container" class="space-y-4">
+            <!-- Options will be added here -->
+          </div>
+          <button id="add-option-button" class="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Option
+          </button>
+        </div>
+
+        <div class="flex justify-end space-x-4 pt-4 border-t">
+          <button id="cancel-button" class="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 cursor-pointer rounded">Cancel</button>
+          <button id="save-button" class="px-4 py-2 bg-gray-800 text-white font-medium cursor-pointer rounded flex items-center">Save</button>
+        </div>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  let optionCount = 0
+  const addOption = (initialProducts = []) => {
+    optionCount++
+    const optionId = `option-${Date.now()}-${optionCount}`
+    const div = document.createElement('div')
+    div.className = "bg-gray-50 p-3 rounded-lg border border-gray-200 relative"
+    div.innerHTML = `
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-sm font-semibold text-gray-700">Option ${optionCount}</span>
+        <button class="text-red-500 hover:text-red-700 remove-option-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="space-y-2 max-h-64 overflow-y-auto">
+        ${products.map(p => {
+          const initialProd = initialProducts.find(ip => ip.productId === p.id)
+          return `
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="${optionId}-prod-${p.id}" value="${p.id}" class="product-checkbox h-4 w-4 accent-gray-800 border-gray-300 rounded focus:ring-gray-500" ${initialProd ? 'checked' : ''}>
+            <label for="${optionId}-prod-${p.id}" class="flex-1 text-sm text-gray-700 truncate">${p.name}</label>
+            <input type="number" id="${optionId}-qty-${p.id}" min="1" step="1" value="${initialProd ? initialProd.quantity : 1}" class="qty-input w-16 px-2 py-1 border border-gray-300 rounded text-sm ${initialProd ? '' : 'hidden'}">
+          </div>
+        `}).join('')}
+      </div>
+    `
+    
+    div.querySelector('.remove-option-btn').addEventListener('click', () => {
+      div.remove()
+    })
+
+    // Toggle quantity input visibility when checkbox changes
+    div.querySelectorAll('.product-checkbox').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const prodId = e.target.value
+        const qtyInput = div.querySelector(`#${optionId}-qty-${prodId}`)
+        if (qtyInput) {
+          qtyInput.classList.toggle('hidden', !e.target.checked)
+        }
+
+      })
+    })
+
+    document.getElementById('options-container').appendChild(div)
+  }
+
+  // Load existing options
+  if (group.options && group.options.length > 0) {
+    group.options.forEach(opt => addOption(opt.products))
+  } else {
+    addOption()
+  }
+
+  document.getElementById('add-option-button').addEventListener('click', () => addOption())
+
+  // Modal closing logic
+  const closeModal = () => {
+    clearAllErrors(modal)
+    document.body.removeChild(modal)
+  }
+
+  const saveGroup = () => {
+    clearAllErrors(modal)
+
+    // Validate Group Name
+    if (!validateRequiredField('group-name', 'Group Name')) {
+      return
+    }
+
+    const name = document.getElementById('group-name').value.trim()
+
+    const options = []
+    let hasEmptyOption = false
+    document.querySelectorAll('#options-container > div').forEach(optDiv => {
+      const products = []
+      optDiv.querySelectorAll('.product-checkbox:checked').forEach(cb => {
+        const productId = cb.value
+        const qtyInput = optDiv.querySelector(`[id$="-qty-${productId}"]`)
+        const quantity = qtyInput ? parseInt(qtyInput.value) || 1 : 1
+        products.push({ productId, quantity })
+      })
+      
+      if (products.length > 0) {
+        options.push({ products })
+      } else {
+        optDiv.classList.add('border-red-500')
+        hasEmptyOption = true
+      }
+    })
+
+    if (hasEmptyOption) {
+      const container = document.getElementById('options-container')
+      let errorMsg = container.nextElementSibling
+      if (!errorMsg || !errorMsg.classList.contains('field-error-message')) {
+        errorMsg = document.createElement('p')
+        errorMsg.className = 'field-error-message text-sm text-red-600 mt-1'
+        container.parentNode.insertBefore(errorMsg, container.nextSibling)
+      }
+      errorMsg.textContent = 'Each option must have at least one product selected.'
+      return
+    } else {
+      // Clear error
+      const container = document.getElementById('options-container')
+      const errorMsg = container.nextElementSibling
+      if (errorMsg && errorMsg.classList.contains('field-error-message')) {
+        errorMsg.remove()
+      }
+      document.querySelectorAll('#options-container > div').forEach(d => d.classList.remove('border-red-500'))
+    }
+
+    if (options.length < 2) {
+      const container = document.getElementById('options-container')
+      let errorMsg = container.nextElementSibling
+      if (!errorMsg || !errorMsg.classList.contains('field-error-message')) {
+        errorMsg = document.createElement('p')
+        errorMsg.className = 'field-error-message text-sm text-red-600 mt-1'
+        container.parentNode.insertBefore(errorMsg, container.nextSibling)
+      }
+      errorMsg.textContent = 'Please add at least two options with selected products.'
+      return
+    }
+
+    browser.runtime.sendMessage({
+      action: "updateAlternativeGroup",
+      sessionId: currentSession,
+      groupId: group.id,
+      updatedGroup: { name, options }
+    }).then(response => {
+      sessions = response.sessions
+      closeModal()
+      renderAlternativesView()
+    })
+  }
+
+  // Setup UX improvements
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, saveGroup)
+
+  document.getElementById('modalOverlay').addEventListener('click', closeModal)
+  document.getElementById('modalContent').addEventListener('click', e => e.stopPropagation())
+  document.getElementById('cancel-button').addEventListener('click', closeModal)
+  document.getElementById('save-button').addEventListener('click', saveGroup)
+}
+function showDeleteAlternativeGroupModal(groupId) {
+  const modal = document.createElement("div")
+  modal.innerHTML = `
+    <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+        <h3 class="text-lg font-medium text-gray-800 mb-4">Delete Alternative Group</h3>
+        <p class="text-gray-600 mb-6">Are you sure you want to delete this group?</p>
+        
+        <div class="flex justify-end space-x-4">
+          <button id="cancel-button" class="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 cursor-pointer rounded">Cancel</button>
+          <button id="delete-button" class="px-4 py-2 bg-gray-800 text-white font-medium cursor-pointer rounded flex items-center">Delete</button>
+        </div>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  const close = () => document.body.removeChild(modal)
+  document.getElementById('modalOverlay').addEventListener('click', close)
+  document.getElementById('modalContent').addEventListener('click', e => e.stopPropagation())
+  document.getElementById('cancel-button').addEventListener('click', close)
+
+  document.getElementById('delete-button').addEventListener('click', () => {
+    browser.runtime.sendMessage({
+      action: "deleteAlternativeGroup",
+      sessionId: currentSession,
+      groupId
+    }).then(response => {
+      sessions = response.sessions
+      close()
+      renderAlternativesView()
+    })
+  })
 }
 
 // Initialize the app
