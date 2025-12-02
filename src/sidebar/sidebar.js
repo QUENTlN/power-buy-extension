@@ -761,7 +761,7 @@ function showNewSessionModal() {
   const modal = document.createElement("div")
     modal.innerHTML = `
       <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-        <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+        <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
           <h3 class="text-lg font-medium text-gray-800 mb-4">New Session</h3>
           <input 
             type="text" 
@@ -851,7 +851,7 @@ function showEditSessionModal(session) {
   const modal = document.createElement("div") 
   modal.innerHTML = `
       <div id="modalOverlay" class="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-        <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6" onclick="event.stopPropagation()">
+        <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
           <h3 class="text-lg font-medium text-gray-800 mb-4">Edit Session</h3>
           <input 
             type="text" 
@@ -920,7 +920,7 @@ function showDeleteSessionModal(sessionId) {
   modal.className = "modal"
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Are you sure you want to delete?</h3>
         
         <div class="flex justify-end space-x-4">
@@ -967,7 +967,7 @@ function showNewProductModal() {
   modal.className = "modal"
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">New Product</h3>
         
         <div class="mb-6">
@@ -1153,7 +1153,7 @@ function showEditProductModal(product) {
   modal.className = "modal"
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Edit Product</h3>
         
         <div class="mb-6">
@@ -1342,7 +1342,7 @@ function showEditPageModal(page) {
   modal.className = "modal"
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Edit Page</h3>
         
         <div class="mb-6">
@@ -1526,7 +1526,7 @@ function showEditBundleModal(bundle) {
   modal.className = "modal"
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Edit Bundle</h3>
         
         <div class="mb-6">
@@ -1763,7 +1763,7 @@ function showDeleteBundleModal(bundleId) {
   modal.className = "modal"
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Delete Bundle</h3>
         <p class="text-gray-600 mb-6">Are you sure you want to delete this bundle?</p>
         
@@ -1811,7 +1811,7 @@ function showDeleteProductModal(productId) {
   modal.className = "modal"
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Delete Product</h3>
         <p class="text-gray-600 mb-6">Are you sure you want to delete this product?</p>
         
@@ -1859,7 +1859,7 @@ function showDeletePageModal(pageId) {
   modal.className = "modal"
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Delete Page</h3>
         <p class="text-gray-600 mb-6">Are you sure you want to delete this page?</p>
         
@@ -1915,7 +1915,7 @@ function showScrapedDataModal() {
   const hasKnownParser = scrapedData.hasKnownParser;
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Add Page for ${product.name}</h3>
         
         ${!hasKnownParser ? 
@@ -3189,7 +3189,7 @@ function showDeleteAlternativeGroupModal(groupId) {
   const modal = document.createElement("div")
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div id="modalContent" class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Delete Alternative Group</h3>
         <p class="text-gray-600 mb-6">Are you sure you want to delete this group?</p>
         
