@@ -8,18 +8,68 @@ const UglifyJS = require('uglify-js');
 // Paths
 const publicDir = path.join(__dirname, 'public');
 const srcDir = path.join(__dirname, 'src');
-const buildDir = path.join(__dirname, 'build');
+// Determine target browser from CLI argument or environment variable
+// Default to 'firefox' if not specified
+function getTargetBrowser() {
+  // Check CLI arguments for --browser=firefox or --browser=chrome
+  const browserArg = process.argv.find(arg => arg.startsWith('--browser='));
+  if (browserArg) {
+    const browser = browserArg.split('=')[1];
+    if (browser === 'firefox' || browser === 'chrome') {
+      return browser;
+    }
+  }
+  
+  // Check environment variable
+  const envBrowser = process.env.BROWSER;
+  if (envBrowser === 'firefox' || envBrowser === 'chrome') {
+    return envBrowser;
+  }
+  
+  // Default to firefox
+  return 'firefox';
+}
+
+const targetBrowser = getTargetBrowser();
+const buildDir = path.join(__dirname, 'build', targetBrowser);
 
 // Check if in production mode
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Step 1: Copy the 'public' folder to 'build'
+
+// Step 1: Copy the 'public' folder to 'build' (excluding manifest.json)
 async function copyPublicFolder() {
   try {
-    await fs.copy(publicDir, buildDir);
-    console.log('Public folder copied to build.');
+    // Copy all files except manifest.json
+    const files = await fs.readdir(publicDir);
+    for (const file of files) {
+      const srcPath = path.join(publicDir, file);
+      const destPath = path.join(buildDir, file);
+      const stat = await fs.stat(srcPath);
+      
+      if (stat.isDirectory()) {
+        await fs.copy(srcPath, destPath);
+      } else if (!file.startsWith('manifest')) {
+        await fs.copy(srcPath, destPath);
+      }
+    }
+    console.log('Public folder copied to build (excluding manifest files).');
   } catch (err) {
     console.error('Error copying public folder:', err);
+  }
+}
+
+// Step 1b: Copy the appropriate manifest file
+async function copyManifest() {
+  try {
+    const manifestSource = path.join(srcDir, `manifest.${targetBrowser}.json`);
+    const manifestDest = path.join(buildDir, 'manifest.json');
+    
+    await fs.copy(manifestSource, manifestDest);
+    console.log(`Manifest copied for ${targetBrowser}: manifest.${targetBrowser}.json -> manifest.json`);
+  } catch (err) {
+    console.error(`Error copying manifest for ${targetBrowser}:`, err);
+    throw err;
   }
 }
 
@@ -112,8 +162,15 @@ async function minifyJsFiles() {
                 
                 if (stat.isDirectory()) {
                     jsFiles.push(...(await getAllJsFiles(fullPath)));
-                } else if (file.endsWith('.js')) {
-                    jsFiles.push(fullPath);
+                } else if (file.endsWith('.js') && !file.startsWith('manifest')) {
+                    // Filter files based on target browser
+                    if (targetBrowser === 'firefox' && file === 'background.service-worker.js') {
+                        continue; // Skip service worker for Firefox
+                    }
+                    if (targetBrowser === 'chrome' && file === 'background.js') {
+                        continue; // Skip background script for Chrome
+                    }
+                     jsFiles.push(fullPath);
                 }
             }
             
@@ -151,12 +208,13 @@ async function build() {
   try {
     // console.log('Tailwind plugin:', require('@tailwindcss/postcss') || require('tailwindcss'));
     await fs.emptyDir(buildDir); // Clean the build directory
-    console.log('Build directory cleaned.');
+    console.log(`Build directory cleaned. Building for ${targetBrowser}...`);
     await copyPublicFolder();
+    await copyManifest();
     await copyHtmlFiles();
     await processCssFiles();
     await minifyJsFiles();
-    console.log('Build process completed.');
+    console.log(`Build process completed for ${targetBrowser}.`);
   } catch (err) {
     console.error('Build process failed:', err);
   }
@@ -197,8 +255,9 @@ async function processFile(filePath) {
     }
 }
 
-// Vérifiez si un fichier spécifique est passé en argument
-const changedFilePath = process.argv[2];
+// Find the first argument that doesn't start with '--'
+const args = process.argv.slice(2);
+const changedFilePath = args.find(arg => !arg.startsWith('--'));
 
 if (changedFilePath) {
     processFile(changedFilePath).then(() => {

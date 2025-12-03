@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "node build.js",
     "watch": "node watch.js",
-    "build": "NODE_ENV=production node build.js",
+    "build": "NODE_ENV=production node build.js --browser=firefox",
+    "build:firefox": "NODE_ENV=production node build.js --browser=firefox",
+    "build:chrome": "NODE_ENV=production node build.js --browser=chrome",
     "clean": "rimraf build"
   },
   "repository": {

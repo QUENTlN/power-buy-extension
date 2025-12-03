@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Savvy - Find the best price",
+  "version": "1.0.0",
+  "description": "Optimize your shopping expenses by finding the best combination of products and sellers",
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  },
+  "permissions": ["activeTab", "storage", "tabs", "sidePanel"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_icon": {
+      "19": "icons/icon-19.png",
+      "38": "icons/icon-38.png"
+    },
+    "default_title": "Savvy - Find the best price",
+    "default_popup": "popup/popup.html"
+  },
+  "side_panel": {
+    "default_path": "sidebar/sidebar.html"
+  },
+  "background": {
+    "service_worker": "background.service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-scripts/scraper.js"]
+    }
+  ]
+}
+
