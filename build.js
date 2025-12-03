@@ -163,13 +163,23 @@ async function minifyJsFiles() {
                 if (stat.isDirectory()) {
                     jsFiles.push(...(await getAllJsFiles(fullPath)));
                 } else if (file.endsWith('.js') && !file.startsWith('manifest')) {
+                    // Always exclude build utilities
+                    if (file === 'service-worker-shim.js') {
+                        continue;
+                    }
+
                     // Filter files based on target browser
-                    if (targetBrowser === 'firefox' && file === 'background.service-worker.js') {
-                        continue; // Skip service worker for Firefox
+                    if (targetBrowser === 'firefox') {
+                        // Firefox doesn't use the service worker file (if it existed in src)
+                        if (file === 'background.service-worker.js') continue;
                     }
-                    if (targetBrowser === 'chrome' && file === 'background.js') {
-                        continue; // Skip background script for Chrome
+                    
+                    if (targetBrowser === 'chrome') {
+                        // Chrome uses the generated service worker, so exclude the source files
+                        if (file === 'background.js') continue;
+                        if (file === 'knownParsers.js') continue;
                     }
+
                      jsFiles.push(fullPath);
                 }
             }
@@ -194,6 +204,31 @@ async function minifyJsFiles() {
             } else {
                 await fs.copy(jsFile, destPath);
                 console.log(`JS file copied to build: ${relativePath}`);
+            }
+        }
+
+        // Special handling for Chrome service worker generation
+        if (targetBrowser === 'chrome') {
+            console.log('Generating background.service-worker.js for Chrome...');
+            const shimPath = path.join(srcDir, 'utils', 'service-worker-shim.js');
+            const parsersPath = path.join(srcDir, 'config', 'knownParsers.js');
+            const backgroundPath = path.join(srcDir, 'background.js');
+            const destPath = path.join(buildDir, 'background.service-worker.js');
+
+            const shimContent = await fs.readFile(shimPath, 'utf8');
+            const parsersContent = await fs.readFile(parsersPath, 'utf8');
+            const backgroundContent = await fs.readFile(backgroundPath, 'utf8');
+
+            const combinedContent = `${shimContent}\n\n${parsersContent}\n\n${backgroundContent}`;
+
+            if (isProduction) {
+                const result = UglifyJS.minify(combinedContent);
+                if (result.error) throw result.error;
+                await fs.writeFile(destPath, result.code);
+                console.log('Generated and minified background.service-worker.js');
+            } else {
+                await fs.writeFile(destPath, combinedContent);
+                console.log('Generated background.service-worker.js');
             }
         }
 
