@@ -1366,10 +1366,10 @@ function showEditBundleModal(bundle) {
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
       <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <h3 class="text-lg font-medium card-text mb-4">Edit Bundle</h3>
+        <h3 class="text-lg font-medium card-text mb-4">${t("bundles.editBundle")}</h3>
         
         <div class="mb-6">
-          <label for="page-url" class="block text-sm font-medium secondary-text mb-1">URL</label>
+          <label for="page-url" class="block text-sm font-medium secondary-text mb-1">${t("pages.url")}</label>
           <input 
             type="text" 
             id="page-url" 
@@ -1380,7 +1380,7 @@ function showEditBundleModal(bundle) {
         </div>
 
         <div class="mb-6">
-          <label class="block text-sm font-medium secondary-text mb-2">Select products in this bundle:</label>
+          <label class="block text-sm font-medium secondary-text mb-2">${t("modals.selectProductsInBundle")}</label>
           <div class="space-y-2">
             ${session.products
               .map(
@@ -1404,7 +1404,7 @@ function showEditBundleModal(bundle) {
                   step="1" 
                   value="${productQty}"
                   class="bundle-edit-qty w-20 px-2 py-1 border border-default input-bg card-text rounded text-sm ${isChecked ? '' : 'hidden'}"
-                  placeholder="Qty"
+                  placeholder="${t("modals.qtyPlaceholder")}"
                 >
               </div>
             `
@@ -1415,51 +1415,51 @@ function showEditBundleModal(bundle) {
         </div>
 
         <div class="mb-6">
-          <label for="page-price" class="block text-sm font-medium secondary-text mb-1">Price</label>
+          <label for="page-price" class="block text-sm font-medium secondary-text mb-1">${t("pages.price")}</label>
           <input 
             type="text" 
             id="page-price" 
             value="${bundle.price || ""}"
-            placeholder="Enter price"
+            placeholder="${t("modals.enterPrice")}"
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           >
         </div>
 
         <div class="mb-6">
-          <label for="page-currency" class="block text-sm font-medium secondary-text mb-1">Currency</label>
+          <label for="page-currency" class="block text-sm font-medium secondary-text mb-1">${t("pages.currency")}</label>
           <select 
             id="page-currency" 
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           >
-            <option value="FREE" ${bundle.currency === "FREE" ? "selected" : ""}>Free</option>
+            <option value="FREE" ${bundle.currency === "FREE" ? "selected" : ""}>${t("pages.free")}</option>
             ${CURRENCIES.map(c => `<option value="${c.code}" ${bundle.currency === c.code ? "selected" : ""}>${c.label} - ${c.symbol}</option>`).join('')}
           </select>
         </div>
 
         <div class="mb-6">
-          <label for="page-shipping" class="block text-sm font-medium secondary-text mb-1">Shipping Price</label>
+          <label for="page-shipping" class="block text-sm font-medium secondary-text mb-1">${t("modals.shippingPrice")}</label>
           <input 
             type="text" 
             id="page-shipping" 
             value="${bundle.shippingPrice || ""}"
-            placeholder="Enter shipping price"
+            placeholder="${t("modals.enterShipping")}"
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           >
         </div>
 
         <div class="mb-6">
-          <label for="page-seller" class="block text-sm font-medium secondary-text mb-1">Seller</label>
+          <label for="page-seller" class="block text-sm font-medium secondary-text mb-1">${t("pages.seller")}</label>
           <input 
             type="text" 
             id="page-seller" 
             value="${bundle.seller || ""}"
-            placeholder="Enter seller name"
+            placeholder="${t("modals.enterSeller")}"
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           >
         </div>
 
         <div class="mb-6">
-          <label for="items-per-purchase" class="block text-sm font-medium secondary-text mb-1">Items per Purchase</label>
+          <label for="items-per-purchase" class="block text-sm font-medium secondary-text mb-1">${t("modals.itemsPerPurchase")}</label>
           <input 
             type="number" 
             id="items-per-purchase" 
@@ -1468,27 +1468,27 @@ function showEditBundleModal(bundle) {
             step="1"
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           >
-          <p class="mt-1 text-sm muted-text">How many items are included in one purchase</p>
+          <p class="mt-1 text-sm muted-text">${t("modals.itemsPerPurchaseHelp")}</p>
         </div>
 
         <div class="mb-6">
-          <label for="max-per-purchase" class="block text-sm font-medium secondary-text mb-1">Max per Purchase (Optional)</label>
+          <label for="max-per-purchase" class="block text-sm font-medium secondary-text mb-1">${t("modals.maxPerPurchase")} (${t("modals.optional")})</label>
           <input 
             type="number" 
             id="max-per-purchase" 
             value="${bundle.maxPerPurchase || ""}"
             min="1"
             step="1"
-            placeholder="Leave empty if unlimited"
+            placeholder="${t("modals.leaveEmptyIfUnlimited")}"
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           >
-          <p class="mt-1 text-sm muted-text">Maximum number of times you can purchase from this bundle</p>
+          <p class="mt-1 text-sm muted-text">${t("modals.maxPerPurchaseHelpBundle")}</p>
         </div>
 
         <div class="flex justify-end space-x-4">
-          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">Cancel</button>
+          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
           <button id="save-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">
-            Save
+            ${t("common.save")}
           </button>
         </div>
       </div>
@@ -1597,13 +1597,13 @@ function showDeleteBundleModal(bundleId) {
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
       <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <h3 class="text-lg font-medium card-text mb-4">Delete Bundle</h3>
-        <p class="muted-text mb-6">Are you sure you want to delete this bundle?</p>
+        <h3 class="text-lg font-medium card-text mb-4">${t("bundles.deleteBundle")}</h3>
+        <p class="muted-text mb-6">${t("bundles.confirmDelete")}</p>
         
         <div class="flex justify-end space-x-4">
-          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">Cancel</button>
+          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
           <button id="delete-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">
-            Delete
+            ${t("bundles.deleteButton")}
           </button>
         </div>
       </div>
@@ -1645,13 +1645,13 @@ function showDeleteProductModal(productId) {
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
       <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <h3 class="text-lg font-medium card-text mb-4">Delete Product</h3>
-        <p class="muted-text mb-6">Are you sure you want to delete this product?</p>
+        <h3 class="text-lg font-medium card-text mb-4">${t("products.deleteProduct")}</h3>
+        <p class="muted-text mb-6">${t("products.confirmDelete")}</p>
         
         <div class="flex justify-end space-x-4">
-          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">Cancel</button>
+          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
           <button id="delete-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">
-            Delete
+            ${t("products.deleteButton")}
           </button>
         </div>
       </div>

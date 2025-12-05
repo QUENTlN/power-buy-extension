@@ -174,7 +174,9 @@
         "leaveEmptyIfUnlimited": "Dejar vacío si es ilimitado",
         "fieldRequired": "{{fieldName}} es obligatorio",
         "minOne": "Debe ser al menos 1",
-        "itemsPerPurchaseRequired": "Artículos por compra es obligatorio"
+        "itemsPerPurchaseRequired": "Artículos por compra es obligatorio",
+        "maxPerPurchaseHelpBundle": "Número máximo de veces que puede comprar este paquete",
+        "qtyPlaceholder": "Cant."
     },
     "optimization": {
         "title": "Optimización",

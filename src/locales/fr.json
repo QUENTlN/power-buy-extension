@@ -174,7 +174,9 @@
         "leaveEmptyIfUnlimited": "Laisser vide si illimité",
         "fieldRequired": "{{fieldName}} est requis",
         "minOne": "Doit être au moins 1",
-        "itemsPerPurchaseRequired": "Articles par achat est requis"
+        "itemsPerPurchaseRequired": "Articles par achat est requis",
+        "maxPerPurchaseHelpBundle": "Nombre maximum de fois que vous pouvez acheter ce lot",
+        "qtyPlaceholder": "Qté"
     },
     "optimization": {
         "title": "Optimisation",
