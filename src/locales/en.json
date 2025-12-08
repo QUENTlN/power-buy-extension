@@ -16,6 +16,8 @@
         "newSession": "New Session",
         "editSession": "Edit Session",
         "deleteSession": "Delete Session",
+        "manageQuantities": "Manage quantities",
+        "deleteAllSessions": "Delete all sessions",
         "sessionName": "Session name",
         "enterSessionName": "Enter session name",
         "products": "Products",

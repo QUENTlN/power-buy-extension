@@ -26,7 +26,7 @@ function saveToStorage() {
 const messageHandlers = {
   // Sessions
   createSession: (message) => {
-    createSession(message.name)
+    createSession(message)
     return { success: true, sessions, currentSession }
   },
   updateSession: (message) => {
@@ -101,7 +101,6 @@ const messageHandlers = {
 
   // Actions
   scrapePage: (message, sender) => {
-    console.log("Scrape page request received for tab:", sender, message)
     scrapePage(message.tabId)
     // No response expected by caller
     return undefined
@@ -162,10 +161,11 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 })
 
 // Session management
-function createSession(name) {
+function createSession(data) {
   const newSession = {
     id: Date.now().toString(),
-    name,
+    name: data.name,
+    manageQuantity: data.manageQuantity,
     products: [],
     bundles: [],
     alternativeGroups: [],
@@ -321,14 +321,10 @@ function deleteAlternativeGroup(sessionId, groupId) {
 
 // Scraping
 function scrapePage(tabId) {
-  console.log("Checking tab status before scraping:", tabId);
   browser.tabs.get(tabId).then(tab => {
     if (tab.active) {
-      console.log("Sending scrape message to active tab:", tabId);
       browser.tabs.sendMessage(tabId, { action: "scrape" })
         .catch(error => console.error("Error sending scrape message:", error));
-    } else {
-      console.log("Tab is not active, skipping scrape:", tabId);
     }
   }).catch(error => console.error("Error checking tab status:", error));
 }

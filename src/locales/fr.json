@@ -16,6 +16,8 @@
         "newSession": "Nouvelle session",
         "editSession": "Modifier la session",
         "deleteSession": "Supprimer la session",
+        "manageQuantities": "Gérer les quantités",
+        "deleteAllSessions": "Supprimer toutes les sessions",
         "sessionName": "Nom de la session",
         "enterSessionName": "Entrez le nom de la session",
         "products": "Produits",

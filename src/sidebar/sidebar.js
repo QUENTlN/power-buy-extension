@@ -24,10 +24,7 @@ async function init() {
         browser.windows.getLastFocused().then(focusedWindow => {
           if (currentWindow.id === focusedWindow.id) {
             scrapedData = message.data
-            console.log("Received scraped data in active window:", scrapedData)
             showScrapedDataModal()
-          } else {
-            console.log("Ignoring scraped data in inactive window")
           }
         });
       });
@@ -187,7 +184,7 @@ function renderProductsView() {
           <div class="card-bg rounded-xl shadow-md p-4 product-item" data-id="${product.id}">
             <div class="flex justify-between items-center cursor-pointer">
               <div class="flex-1 min-w-0 mr-4 cursor-pointer">
-                <h2 class="text-xl font-medium card-text truncate">${product.name}${product.quantity && product.quantity > 1 ? ` (×${product.quantity})` : ''}</h2>
+                <h2 class="text-xl font-medium card-text truncate">${product.name}${(session.manageQuantity !== false && product.quantity && product.quantity > 1) ? ` (×${product.quantity})` : ''}</h2>
                 <p class="muted-text text-md truncate">
                   ${product.pages.length} ${t("products.pages")}
                   ${session.bundles && session.bundles.some(b => b.products && b.products.some(bp => bp.productId === product.id)) 
@@ -268,10 +265,8 @@ function renderProductsView() {
   document.querySelectorAll(".product-item").forEach((item) => {
     item.addEventListener("click", (e) => {
       if (!e.target.closest(".edit-button") && !e.target.closest(".delete-button")) {
-        console.log("Product item clicked ",item);
         const productId = item.dataset.id
         currentProduct = productId
-        console.log("Current product set to ",currentProduct);
         currentView = "pages"
         renderApp()
       }
@@ -299,7 +294,6 @@ function renderProductsView() {
 function renderPagesView() {
   const session = sessions.find((s) => s.id === currentSession)
   const product = session.products.find((p) => p.id === currentProduct)
-  console.log("Rendering pages for product ",product);
 
   if (!session || !product) {
     currentView = "products"
@@ -400,7 +394,7 @@ function renderPagesView() {
                         ${bundle.products && bundle.products.length > 0 
                           ? bundle.products.map(bp => {
                               const prod = session.products.find(p => p.id === bp.productId)
-                              return prod ? `<li class="text-sm muted-text">• ${prod.name} ${bp.quantity > 1 ? `(x${bp.quantity})` : ''}</li>` : ''
+                              return prod ? `<li class="text-sm muted-text">• ${prod.name} ${(session.manageQuantity !== false && bp.quantity > 1) ? `(x${bp.quantity})` : ''}</li>` : ''
                             }).join('')
                           : `<li class="text-sm muted-text">${t("pages.noProducts")}</li>`
                         }
@@ -534,7 +528,7 @@ function renderSettingsView() {
         <div class="flex items-center">
           <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="dark-mode" class="sr-only peer" ${settings.darkMode ? "checked" : ""}>
-          <div class="w-11 h-6 secondary-bg peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:after:bg-gray-100 after:border after:border-gray-300 dark:after:border-gray-600 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[hsl(var(--primary))] dark:peer-checked:after:bg-[hsl(var(--primary-foreground))]"></div>
+          <div class="toggle-switch"></div>
           </label>
         </div>
         </div>
@@ -598,6 +592,15 @@ function showNewSessionModal() {
               class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
             >
           </div>
+          <div class="mb-6 flex items-center justify-between">
+            <label class="text-sm font-medium secondary-text">${t("sessions.manageQuantities")}</label>
+            <div class="flex items-center">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="manage-quantities" class="sr-only peer">
+                <div class="toggle-switch"></div>
+              </label>
+            </div>
+          </div>
 
           <div class="flex justify-end space-x-4">
             <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
@@ -634,6 +637,7 @@ function showNewSessionModal() {
       .sendMessage({
         action: "createSession",
         name,
+        manageQuantity: document.getElementById("manage-quantities").checked,
       })
       .then((response) => {
         sessions = response.sessions
@@ -685,6 +689,16 @@ function showEditSessionModal(session) {
               class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
             >
           </div>
+
+          <div class="mb-6 flex items-center justify-between">
+            <label class="text-sm font-medium secondary-text">${t("sessions.manageQuantities")}</label>
+            <div class="flex items-center">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="manage-quantities" class="sr-only peer" ${session.manageQuantity !== false ? "checked" : ""}>
+                <div class="toggle-switch"></div>
+              </label>
+            </div>
+          </div>
           
           <div class="flex justify-end space-x-4">
             <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
@@ -712,6 +726,7 @@ function showEditSessionModal(session) {
     
     const name = document.getElementById("session-name").value.trim()
     session.name = name
+    session.manageQuantity = document.getElementById("manage-quantities").checked
     browser.runtime
       .sendMessage({
         action: "updateSession",
@@ -787,6 +802,7 @@ function showDeleteSessionModal(sessionId) {
 }
 
 function showNewProductModal() {
+  const session = sessions.find(s => s.id === currentSession)
   const modal = document.createElement("div")
   modal.className = "modal"
   modal.innerHTML = `
@@ -804,6 +820,7 @@ function showNewProductModal() {
           >
         </div>
 
+        ${session.manageQuantity !== false ? `
         <div class="mb-6">
           <label for="product-quantity" class="block text-sm font-medium secondary-text mb-1">${t("modals.quantityNeeded")}</label>
           <input 
@@ -816,6 +833,7 @@ function showNewProductModal() {
           >
           <p class="mt-1 text-sm muted-text">${t("modals.howManyNeeded")}</p>
         </div>
+        ` : ''}
 
         <div class="mb-6">
           <button id="toggle-compatibility" class="text-sm secondary-text hover:opacity-80 font-medium flex items-center cursor-pointer">
@@ -884,7 +902,8 @@ function showNewProductModal() {
     }
     
     const name = document.getElementById("product-name").value.trim()
-    const quantity = parseInt(document.getElementById("product-quantity").value) || 1
+    const quantityInput = document.getElementById("product-quantity")
+    const quantity = quantityInput ? (parseInt(quantityInput.value) || 1) : 1
 
     const compatibleProducts = []
     document.querySelectorAll('#compatible-products-list input.compat-checkbox:checked').forEach(cb => compatibleProducts.push(cb.value))
@@ -952,6 +971,7 @@ function showNewProductModal() {
 }
 
 function showEditProductModal(product) {
+  const session = sessions.find(s => s.id === currentSession)
   const modal = document.createElement("div")
   modal.className = "modal"
   modal.innerHTML = `
@@ -969,6 +989,7 @@ function showEditProductModal(product) {
           >
         </div>
 
+        ${session.manageQuantity !== false ? `
         <div class="mb-6">
           <label for="product-quantity" class="block text-sm font-medium secondary-text mb-1">${t("modals.quantityNeeded")}</label>
           <input 
@@ -981,6 +1002,7 @@ function showEditProductModal(product) {
           >
           <p class="mt-1 text-sm muted-text">${t("modals.howManyNeeded")}</p>
         </div>
+        ` : ''}
 
         ${sessions.find(s => s.id === currentSession).alternativeGroups && sessions.find(s => s.id === currentSession).alternativeGroups.some(g => g.options.some(opt => opt.products?.some(p => p.productId === product.id))) ? `
           <div class="mb-6 secondary-bg border border-default rounded-lg p-3">
@@ -1000,6 +1022,7 @@ function showEditProductModal(product) {
 
 
 
+        ${session.manageQuantity !== false ? `
         <div class="mb-6" id="limited-compatibility-section" style="display:none;">
           <label class="block text-sm font-medium secondary-text mb-1">${t("modals.limitedCompatibility")}</label>
           <p class="mt-1 text-sm muted-text">${t("modals.compatibilityHelpEdit")}</p>
@@ -1013,6 +1036,7 @@ function showEditProductModal(product) {
             `).join('')}
           </div>
         </div>
+        ` : ''}
         
         <div class="flex justify-end space-x-4">
           <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
@@ -1069,7 +1093,8 @@ function showEditProductModal(product) {
     }
     
     const name = document.getElementById("product-name").value.trim()
-    const quantity = parseInt(document.getElementById("product-quantity").value) || 1
+    const quantityInput = document.getElementById("product-quantity")
+    const quantity = quantityInput ? (parseInt(quantityInput.value) || 1) : 1
     
     const compatibleProducts = []
     document.querySelectorAll('#compatible-products-list input.compat-checkbox:checked').forEach(cb => {
@@ -1121,6 +1146,7 @@ function showEditProductModal(product) {
 }
 
 function showEditPageModal(page) {
+  const session = sessions.find(s => s.id === currentSession)
   const modal = document.createElement("div")
   modal.className = "modal"
   modal.innerHTML = `
@@ -1183,6 +1209,7 @@ function showEditPageModal(page) {
           >
         </div>
 
+        ${session.manageQuantity !== false ? `
         <div class="mb-6">
           <label for="items-per-purchase" class="block text-sm font-medium secondary-text mb-1">${t("modals.itemsPerPurchase")}</label>
           <input 
@@ -1209,6 +1236,7 @@ function showEditPageModal(page) {
           >
           <p class="mt-1 text-sm muted-text">${t("modals.maxPerPurchaseHelp")}</p>
         </div>
+        ` : ''}
 
         <div class="flex justify-end space-x-4">
           <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
@@ -1234,9 +1262,9 @@ function showEditPageModal(page) {
     const shippingPrice = document.getElementById("page-shipping").value
     const seller = document.getElementById("page-seller").value
     const currency = document.getElementById("page-currency").value
-    const itemsPerPurchaseValue = document.getElementById("items-per-purchase").value
+    const itemsPerPurchaseValue = document.getElementById("items-per-purchase")?.value
     const itemsPerPurchase = itemsPerPurchaseValue ? parseInt(itemsPerPurchaseValue) : null
-    const maxPerPurchaseValue = document.getElementById("max-per-purchase").value
+    const maxPerPurchaseValue = document.getElementById("max-per-purchase")?.value
     const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
 
     let isValid = true
@@ -1246,17 +1274,19 @@ function showEditPageModal(page) {
     }
     if (!validateRequiredField('page-seller', t("pages.seller"))) isValid = false
     
-    if (!itemsPerPurchaseValue) {
-      showFieldError('items-per-purchase', t("modals.itemsPerPurchaseRequired"))
-      isValid = false
-    } else if (itemsPerPurchase < 1) {
-      showFieldError('items-per-purchase', t("modals.minOne"))
-      isValid = false
-    }
+    if (session.manageQuantity !== false) {
+      if (!itemsPerPurchaseValue) {
+        showFieldError('items-per-purchase', t("modals.itemsPerPurchaseRequired"))
+        isValid = false
+      } else if (itemsPerPurchase < 1) {
+        showFieldError('items-per-purchase', t("modals.minOne"))
+        isValid = false
+      }
 
-    if (maxPerPurchase !== null && maxPerPurchase < 1) {
-      showFieldError('max-per-purchase', t("modals.minOne"))
-      isValid = false
+      if (maxPerPurchase !== null && maxPerPurchase < 1) {
+        showFieldError('max-per-purchase', t("modals.minOne"))
+        isValid = false
+      }
     }
     
     if (!isValid) return
@@ -1337,6 +1367,7 @@ function showEditBundleModal(bundle) {
                   class="bundle-edit-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                 >
                 <label for="product-${p.id}" class="flex-1 text-sm secondary-text">${p.name}</label>
+                ${session.manageQuantity !== false ? `
                 <input type="number" 
                   id="bundle-product-qty-${p.id}" 
                   min="1" 
@@ -1345,6 +1376,7 @@ function showEditBundleModal(bundle) {
                   class="bundle-edit-qty w-20 px-2 py-1 border border-default input-bg card-text rounded text-sm ${isChecked ? '' : 'hidden'}"
                   placeholder="${t("modals.qtyPlaceholder")}"
                 >
+                ` : ''}
               </div>
             `
                 }
@@ -1397,6 +1429,7 @@ function showEditBundleModal(bundle) {
           >
         </div>
 
+        ${session.manageQuantity !== false ? `
         <div class="mb-6">
           <label for="items-per-purchase" class="block text-sm font-medium secondary-text mb-1">${t("modals.itemsPerPurchase")}</label>
           <input 
@@ -1423,6 +1456,7 @@ function showEditBundleModal(bundle) {
           >
           <p class="mt-1 text-sm muted-text">${t("modals.maxPerPurchaseHelpBundle")}</p>
         </div>
+        ` : ''}
 
         <div class="flex justify-end space-x-4">
           <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
@@ -1458,9 +1492,9 @@ function showEditBundleModal(bundle) {
     const shippingPrice = document.getElementById("page-shipping").value
     const seller = document.getElementById("page-seller").value
     const currency = document.getElementById("page-currency").value
-    const itemsPerPurchaseValue = document.getElementById("items-per-purchase").value
+    const itemsPerPurchaseValue = document.getElementById("items-per-purchase")?.value
     const itemsPerPurchase = itemsPerPurchaseValue ? parseInt(itemsPerPurchaseValue) : null
-    const maxPerPurchaseValue = document.getElementById("max-per-purchase").value
+    const maxPerPurchaseValue = document.getElementById("max-per-purchase")?.value
     const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
     
     let isValid = true
@@ -1470,17 +1504,19 @@ function showEditBundleModal(bundle) {
     }
     if (!validateRequiredField('page-seller', t("pages.seller"))) isValid = false
     
-    if (!itemsPerPurchaseValue) {
-      showFieldError('items-per-purchase', t("modals.itemsPerPurchaseRequired"))
-      isValid = false
-    } else if (itemsPerPurchase < 1) {
-      showFieldError('items-per-purchase', t("modals.minOne"))
-      isValid = false
-    }
+    if (session.manageQuantity !== false) {
+      if (!itemsPerPurchaseValue) {
+        showFieldError('items-per-purchase', t("modals.itemsPerPurchaseRequired"))
+        isValid = false
+      } else if (itemsPerPurchase < 1) {
+        showFieldError('items-per-purchase', t("modals.minOne"))
+        isValid = false
+      }
 
-    if (maxPerPurchase !== null && maxPerPurchase < 1) {
-      showFieldError('max-per-purchase', t("modals.minOne"))
-      isValid = false
+      if (maxPerPurchase !== null && maxPerPurchase < 1) {
+        showFieldError('max-per-purchase', t("modals.minOne"))
+        isValid = false
+      }
     }
     
     if (!isValid) return
@@ -1700,7 +1736,7 @@ function showScrapedDataModal() {
           <div class="flex items-center">
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="is-bundle" class="sr-only peer">
-              <div class="w-11 h-6 secondary-bg peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:after:bg-gray-100 after:border after:border-gray-300 dark:after:border-gray-600 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[hsl(var(--primary))] dark:peer-checked:after:bg-[hsl(var(--primary-foreground))]"></div>
+              <div class="toggle-switch"></div>
             </label>
           </div>
           <p class="mt-1 text-sm muted-text">${t("modals.bundleExplanation")}</p>
@@ -1720,6 +1756,7 @@ function showScrapedDataModal() {
                   class="bundle-product-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-gray-500"
                 >
                 <label for="product-${p.id}" class="flex-1 text-sm secondary-text">${p.name}</label>
+                ${session.manageQuantity !== false ? `
                 <input type="number" 
                   id="product-qty-${p.id}" 
                   min="1" 
@@ -1728,6 +1765,7 @@ function showScrapedDataModal() {
                   class="bundle-product-qty w-20 px-2 py-1 border border-default input-bg card-text rounded text-sm ${p.id === product.id ? '' : 'hidden'}"
                   placeholder="Qty"
                 >
+                ` : ''}
               </div>
             `,
               )
@@ -1897,6 +1935,7 @@ function showScrapedDataModal() {
           >
         </div>
 
+        ${session.manageQuantity !== false ? `
         <div class="mb-6">
           <label for="items-per-purchase" class="block text-sm font-medium secondary-text mb-1">${t("modals.itemsPerPurchase")}</label>
           <input 
@@ -1923,6 +1962,7 @@ function showScrapedDataModal() {
           >
           <p class="mt-1 text-sm muted-text">${t("modals.maxPerPurchaseHelp")}</p>
         </div>
+        ` : ''}
 
         <div class="flex justify-end space-x-4">
           <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
@@ -1971,9 +2011,9 @@ function showScrapedDataModal() {
     const shippingPrice = document.getElementById("page-shipping").value
     const seller = document.getElementById("page-seller").value
     const currency = document.getElementById("page-currency").value
-    const itemsPerPurchaseValue = document.getElementById("items-per-purchase").value
+    const itemsPerPurchaseValue = document.getElementById("items-per-purchase")?.value
     const itemsPerPurchase = itemsPerPurchaseValue ? parseInt(itemsPerPurchaseValue) : null
-    const maxPerPurchaseValue = document.getElementById("max-per-purchase").value
+    const maxPerPurchaseValue = document.getElementById("max-per-purchase")?.value
     const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
 
     let isValid = true
@@ -1983,17 +2023,19 @@ function showScrapedDataModal() {
     }
     if (!validateRequiredField('page-seller', t("pages.seller"))) isValid = false
     
-    if (!itemsPerPurchaseValue) {
-      showFieldError('items-per-purchase', t("modals.itemsPerPurchaseRequired"))
-      isValid = false
-    } else if (itemsPerPurchase < 1) {
-      showFieldError('items-per-purchase', t("modals.minOne"))
-      isValid = false
-    }
+    if (session.manageQuantity !== false) {
+      if (!itemsPerPurchaseValue) {
+        showFieldError('items-per-purchase', t("modals.itemsPerPurchaseRequired"))
+        isValid = false
+      } else if (itemsPerPurchase < 1) {
+        showFieldError('items-per-purchase', t("modals.minOne"))
+        isValid = false
+      }
 
-    if (maxPerPurchase !== null && maxPerPurchase < 1) {
-      showFieldError('max-per-purchase', t("modals.minOne"))
-      isValid = false
+      if (maxPerPurchase !== null && maxPerPurchase < 1) {
+        showFieldError('max-per-purchase', t("modals.minOne"))
+        isValid = false
+      }
     }
     
     if (!isValid) return
@@ -2031,7 +2073,7 @@ function showScrapedDataModal() {
           renderApp()
         })
     } else {
-      const page = {
+            const page = {
         url,
         price,
         shippingPrice,
@@ -2120,7 +2162,7 @@ function renderDeliveryRulesView() {
               <label class="text-sm font-medium secondary-text">${t("deliveryRules.freeDelivery")}</label>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" class="free-delivery-toggle sr-only peer" data-seller="${seller}" ${isFree ? 'checked' : ''}>
-                <div class="w-11 h-6 secondary-bg peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:after:bg-gray-100 after:border after:border-gray-300 dark:after:border-gray-600 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[hsl(var(--primary))] dark:peer-checked:after:bg-[hsl(var(--primary-foreground))]"></div>
+                <div class="toggle-switch"></div>
               </label>
             </div>
 
@@ -2543,7 +2585,9 @@ function showNewAlternativeGroupModal() {
           <div class="flex items-center gap-2">
             <input type="checkbox" id="${optionId}-prod-${p.id}" value="${p.id}" class="product-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-gray-500" ${initialProd ? 'checked' : ''}>
             <label for="${optionId}-prod-${p.id}" class="flex-1 text-sm secondary-text truncate">${p.name}</label>
+            ${session.manageQuantity !== false ? `
             <input type="number" id="${optionId}-qty-${p.id}" min="1" step="1" value="${initialProd ? initialProd.quantity : 1}" class="qty-input w-16 px-2 py-1 border border-default input-bg card-text rounded text-sm ${initialProd ? '' : 'hidden'}">
+            ` : ''}
           </div>
         `}).join('')}
       </div>
@@ -2717,7 +2761,9 @@ function showEditAlternativeGroupModal(group) {
           <div class="flex items-center gap-2">
             <input type="checkbox" id="${optionId}-prod-${p.id}" value="${p.id}" class="product-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-gray-500" ${initialProd ? 'checked' : ''}>
             <label for="${optionId}-prod-${p.id}" class="flex-1 text-sm secondary-text truncate">${p.name}</label>
+            ${session.manageQuantity !== false ? `
             <input type="number" id="${optionId}-qty-${p.id}" min="1" step="1" value="${initialProd ? initialProd.quantity : 1}" class="qty-input w-16 px-2 py-1 border border-default input-bg card-text rounded text-sm ${initialProd ? '' : 'hidden'}">
+            ` : ''}
           </div>
         `}).join('')}
       </div>

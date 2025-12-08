@@ -103,7 +103,6 @@ body {
 }
 
 @layer components {
-  /* Card backgrounds and text */
   .card-bg {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
@@ -112,12 +111,10 @@ body {
     color: hsl(var(--card-foreground));
   }
   
-  /* Muted text */
   .muted-text {
     color: hsl(var(--muted-foreground));
   }
   
-  /* Secondary backgrounds and text */
   .secondary-bg {
     background-color: hsl(var(--secondary));
   }
@@ -125,7 +122,6 @@ body {
     color: hsl(var(--secondary-foreground));
   }
   
-  /* Primary backgrounds and text */
   .primary-bg {
     background-color: hsl(var(--primary));
   }
@@ -133,17 +129,14 @@ body {
     color: hsl(var(--primary-foreground));
   }
   
-  /* Borders */
   .border-default {
     border-color: hsl(var(--border));
   }
   
-  /* Input backgrounds */
   .input-bg {
     background-color: hsl(var(--input));
   }
   
-  /* Error styles */
   .error-text {
     color: hsl(var(--error));
   }
@@ -157,7 +150,10 @@ body {
     --tw-ring-color: hsl(var(--error));
   }
 
-  /* Icons */
+  .toggle-switch {
+    @apply w-11 h-6 bg-[hsl(var(--secondary))] peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:after:bg-gray-100 after:border after:border-gray-300 dark:after:border-gray-600 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[hsl(var(--primary))] dark:peer-checked:after:bg-[hsl(var(--primary-foreground))];
+  }
+
   .icon {
     display: inline-block;
     background-color: currentColor;
