@@ -180,4 +180,5 @@ body {
   .icon-chevron_up { mask-image: url('../icons/chevron_up.svg'); -webkit-mask-image: url('../icons/chevron_up.svg'); }
   .icon-warning { mask-image: url('../icons/warning.svg'); -webkit-mask-image: url('../icons/warning.svg'); }
   .icon-close { mask-image: url('../icons/close.svg'); -webkit-mask-image: url('../icons/close.svg'); }
+  .icon-help { mask-image: url('../icons/help.svg'); -webkit-mask-image: url('../icons/help.svg'); }
 }

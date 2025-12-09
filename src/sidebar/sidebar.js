@@ -602,6 +602,16 @@ function showNewSessionModal() {
             </div>
           </div>
 
+          <div class="mb-6 flex items-center justify-between">
+            <label class="text-sm font-medium secondary-text">${t("sessions.ImportFeesManagement")}</label>
+            <div class="flex items-center">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="import-fees-management" class="sr-only peer">
+                <div class="toggle-switch"></div>
+              </label>
+            </div>
+          </div>
+
           <div class="flex justify-end space-x-4">
             <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
             <button id="save-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">
@@ -638,6 +648,7 @@ function showNewSessionModal() {
         action: "createSession",
         name,
         manageQuantity: document.getElementById("manage-quantities").checked,
+        ImportFeesEnabled: document.getElementById("import-fees-management").checked,
       })
       .then((response) => {
         sessions = response.sessions
@@ -699,6 +710,16 @@ function showEditSessionModal(session) {
               </label>
             </div>
           </div>
+
+          <div class="mb-6 flex items-center justify-between">
+            <label class="text-sm font-medium secondary-text">${t("sessions.ImportFeesManagement")}</label>
+            <div class="flex items-center">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="import-fees-management" class="sr-only peer" ${session.ImportFeesEnabled ? "checked" : ""}>
+                <div class="toggle-switch"></div>
+              </label>
+            </div>
+          </div>
           
           <div class="flex justify-end space-x-4">
             <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
@@ -727,6 +748,7 @@ function showEditSessionModal(session) {
     const name = document.getElementById("session-name").value.trim()
     session.name = name
     session.manageQuantity = document.getElementById("manage-quantities").checked
+    session.ImportFeesEnabled = document.getElementById("import-fees-management").checked
     browser.runtime
       .sendMessage({
         action: "updateSession",
@@ -1209,6 +1231,22 @@ function showEditPageModal(page) {
           >
         </div>
 
+        ${session.ImportFeesEnabled ? `
+        <div class="mb-6">
+          <div class="flex items-center mb-1">
+            <label for="customs-category" class="text-sm font-medium secondary-text">${t("modals.customsCategory")}</label>
+            <div class="ml-2 icon icon-help w-4 h-4 secondary-text cursor-help" title="${t("modals.howToAddCategory")}"></div>
+          </div>
+          <select 
+            id="customs-category" 
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+            <option value="">${t("modals.noCustomsDuties")}</option>
+            ${(session.customsCategories || []).map(cat => `<option value="${cat.id}" ${page.customsCategoryId === cat.id ? 'selected' : ''}>${cat.name}</option>`).join('')}
+          </select>
+        </div>
+        ` : ''}
+
         ${session.manageQuantity !== false ? `
         <div class="mb-6">
           <label for="items-per-purchase" class="block text-sm font-medium secondary-text mb-1">${t("modals.itemsPerPurchase")}</label>
@@ -1266,6 +1304,8 @@ function showEditPageModal(page) {
     const itemsPerPurchase = itemsPerPurchaseValue ? parseInt(itemsPerPurchaseValue) : null
     const maxPerPurchaseValue = document.getElementById("max-per-purchase")?.value
     const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
+    const customsCategoryElement = document.getElementById("customs-category")
+    const customsCategoryId = customsCategoryElement ? (customsCategoryElement.value || null) : null
 
     let isValid = true
     if (currency !== 'FREE') {
@@ -1298,6 +1338,7 @@ function showEditPageModal(page) {
       currency,
       itemsPerPurchase,
       ...(maxPerPurchase !== null && { maxPerPurchase }),
+      ...(customsCategoryId && { customsCategoryId }),
     }
 
     browser.runtime
@@ -1429,6 +1470,22 @@ function showEditBundleModal(bundle) {
           >
         </div>
 
+        ${session.ImportFeesEnabled ? `
+        <div class="mb-6">
+          <div class="flex items-center mb-1">
+            <label for="customs-category" class="text-sm font-medium secondary-text">${t("modals.customsCategory")}</label>
+            <div class="ml-2 icon icon-help w-4 h-4 secondary-text cursor-help" title="${t("modals.howToAddCategory")}"></div>
+          </div>
+          <select 
+            id="customs-category" 
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+            <option value="">${t("modals.noCustomsDuties")}</option>
+            ${(session.customsCategories || []).map(cat => `<option value="${cat.id}" ${bundle.customsCategoryId === cat.id ? 'selected' : ''}>${cat.name}</option>`).join('')}
+          </select>
+        </div>
+        ` : ''}
+
         ${session.manageQuantity !== false ? `
         <div class="mb-6">
           <label for="items-per-purchase" class="block text-sm font-medium secondary-text mb-1">${t("modals.itemsPerPurchase")}</label>
@@ -1496,6 +1553,8 @@ function showEditBundleModal(bundle) {
     const itemsPerPurchase = itemsPerPurchaseValue ? parseInt(itemsPerPurchaseValue) : null
     const maxPerPurchaseValue = document.getElementById("max-per-purchase")?.value
     const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
+    const customsCategoryElement = document.getElementById("customs-category")
+    const customsCategoryId = customsCategoryElement ? (customsCategoryElement.value || null) : null
     
     let isValid = true
     if (currency !== 'FREE') {
@@ -1537,6 +1596,7 @@ function showEditBundleModal(bundle) {
       products,
       itemsPerPurchase,
       ...(maxPerPurchase !== null && { maxPerPurchase }),
+      ...(customsCategoryId && { customsCategoryId }),
     }
 
     browser.runtime
@@ -1935,6 +1995,22 @@ function showScrapedDataModal() {
           >
         </div>
 
+        ${session.ImportFeesEnabled ? `
+        <div class="mb-6">
+          <div class="flex items-center mb-1">
+            <label for="customs-category" class="text-sm font-medium secondary-text">${t("modals.customsCategory")}</label>
+            <div class="ml-2 icon icon-help w-4 h-4 secondary-text cursor-help" title="${t("modals.howToAddCategory")}"></div>
+          </div>
+          <select 
+            id="customs-category" 
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+            <option value="">${t("modals.noCustomsDuties")}</option>
+            ${(session.customsCategories || []).map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('')}
+          </select>
+        </div>
+        ` : ''}
+
         ${session.manageQuantity !== false ? `
         <div class="mb-6">
           <label for="items-per-purchase" class="block text-sm font-medium secondary-text mb-1">${t("modals.itemsPerPurchase")}</label>
@@ -2015,6 +2091,8 @@ function showScrapedDataModal() {
     const itemsPerPurchase = itemsPerPurchaseValue ? parseInt(itemsPerPurchaseValue) : null
     const maxPerPurchaseValue = document.getElementById("max-per-purchase")?.value
     const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
+    const customsCategoryElement = document.getElementById("customs-category")
+    const customsCategoryId = customsCategoryElement ? (customsCategoryElement.value || null) : null
 
     let isValid = true
     if (currency !== 'FREE') {
@@ -2049,6 +2127,7 @@ function showScrapedDataModal() {
         currency,
         itemsPerPurchase,
         ...(maxPerPurchase !== null && { maxPerPurchase }),
+        ...(customsCategoryId && { customsCategoryId }),
         products: [],
         timestamp: new Date().toISOString(),
       }
@@ -2081,6 +2160,7 @@ function showScrapedDataModal() {
         currency,
         itemsPerPurchase,
         ...(maxPerPurchase !== null && { maxPerPurchase }),
+        ...(customsCategoryId && { customsCategoryId }),
         timestamp: new Date().toISOString(),
       }
 
@@ -2136,6 +2216,63 @@ function renderDeliveryRulesView() {
       </div>
 
       <p class="text-sm muted-text mb-6">${t("deliveryRules.subtitle")}</p>
+
+      ${session.ImportFeesEnabled ? `
+      <!-- Customs Tax Configuration -->
+      <div class="mb-8 card-bg rounded-xl shadow-md p-6 border border-default">
+        <h2 class="text-xl font-semibold card-text mb-4">${t("deliveryRules.importFeeSection")}</h2>
+        
+        <!-- Default VAT Rate -->
+        <div class="mb-6">
+          <label for="default-vat" class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.defaultVAT")} (%)</label>
+          <input 
+            type="number" 
+            id="default-vat" 
+            value="${session.defaultVAT ? (session.defaultVAT * 100) : ''}"
+            step="0.01"
+            min="0"
+            max="100"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+        </div>
+
+        <!-- Product Categories -->
+        <div class="mb-4">
+          <h3 class="text-lg font-medium card-text mb-3">${t("deliveryRules.productCategories")}</h3>
+          
+          ${(session.customsCategories && session.customsCategories.length > 0) ? `
+          <div class="space-y-2 mb-4">
+            ${session.customsCategories.map(cat => `
+              <div class="flex items-center justify-between p-3 secondary-bg rounded-lg border border-default">
+                <div class="flex-1">
+                  <p class="font-medium card-text">${cat.name}</p>
+                  <p class="text-sm muted-text">
+                    ${t("deliveryRules.dutyRate")}: ${(cat.dutyRate * 100)}%<br>
+                    ${t("deliveryRules.vatRate")}: ${(cat.vatRate * 100)}%
+                  </p>
+                </div>
+                <div class="flex space-x-2">
+                  <button class="muted-text p-1 cursor-pointer edit-category-btn" data-id="${cat.id}">
+                    <span class="icon icon-edit h-5 w-5"></span>
+                  </button>
+                  <button class="muted-text p-1 cursor-pointer delete-category-btn" data-id="${cat.id}">
+                    <span class="icon icon-delete h-5 w-5"></span>
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ` : `
+          <p class="text-sm muted-text mb-4">${t("deliveryRules.noCategoriesYet")}</p>
+          `}
+
+          <button id="add-category-btn" class="w-full flex items-center justify-center space-x-2 cursor-pointer secondary-bg secondary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm border border-default">
+            <span class="icon icon-plus h-5 w-5"></span>
+            <span class="text-base font-medium">${t("deliveryRules.addCategory")}</span>
+          </button>
+        </div>
+      </div>
+      ` : ''}
 
       <div class="space-y-4 seller-settings">
         ${getUniqueSellers(session)
@@ -2195,6 +2332,16 @@ function renderDeliveryRulesView() {
                 <input type="number" class="free-threshold-value w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" data-seller="${seller}" step="0.01" min="0" value="${rule.threshold || ''}">
               </div>
             </div>
+
+            ${session.ImportFeesEnabled ? `
+            <div class="mb-4" style="display: ${copiedFrom !== 'None' ? 'none' : 'block'}">
+              <label class="block text-sm font-medium secondary-text mb-1">
+                ${t("deliveryRules.customsClearanceFees")}
+                <span class="icon icon-help w-4 h-4 ml-1 cursor-help" title="${t("deliveryRules.customsClearanceFeesHelp")}"></span>
+              </label>
+              <input type="number" class="customs-clearance-fees w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" data-seller="${seller}" step="0.01" min="0" value="${rule.customsClearanceFee || 0}">
+            </div>
+            ` : ''}
           </div>
         `
             }
@@ -2212,6 +2359,33 @@ function renderDeliveryRulesView() {
     currentView = "products"
     renderApp()
   })
+
+  // Customs category event listeners
+  const addCategoryBtn = document.getElementById("add-category-btn")
+  if (addCategoryBtn) {
+    addCategoryBtn.addEventListener("click", () => {
+      showNewCustomsCategoryModal()
+    })
+  }
+
+  document.querySelectorAll(".edit-category-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const categoryId = btn.dataset.id
+      const category = session.customsCategories.find(c => c.id === categoryId)
+      if (category) {
+        showEditCustomsCategoryModal(category)
+      }
+    })
+  })
+
+  document.querySelectorAll(".delete-category-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const categoryId = btn.dataset.id
+      showDeleteCustomsCategoryModal(categoryId)
+    })
+  })
+
+
   document.querySelectorAll('.same-seller-select').forEach((sel) => {
     sel.addEventListener('change', (e) => {
       const seller = e.target.dataset.seller
@@ -2303,13 +2477,13 @@ function renderDeliveryRulesView() {
       }
 
       const effectiveSeller = copiedFrom || seller
-      
+
       const freeToggle = document.querySelector(`.free-delivery-toggle[data-seller="${effectiveSeller}"]`)
       const isFree = freeToggle ? freeToggle.checked : false
 
       if (isFree) {
         rule.type = 'free'
-        rule.threshold = 0 
+        rule.threshold = 0
       } else {
         const typeSelect = document.querySelector(`.delivery-type[data-seller="${effectiveSeller}"]`)
         const type = typeSelect ? typeSelect.value : 'fixed'
@@ -2327,6 +2501,12 @@ function renderDeliveryRulesView() {
           rule.threshold = Number.parseFloat(threshold && threshold.value) || 0
         }
       }
+
+      // Collect customs clearance fee if enabled
+      const customsFeeInput = document.querySelector(`.customs-clearance-fees[data-seller="${effectiveSeller}"]`)
+      if (customsFeeInput) {
+        rule.customsClearanceFee = Number.parseFloat(customsFeeInput.value) || 0
+      }
       
       if (copiedFrom) {
         rule.copiedFrom = copiedFrom
@@ -2336,6 +2516,19 @@ function renderDeliveryRulesView() {
     })
 
     session.deliveryRules = deliveryRules
+
+    // Save defaultVAT if customs tax is enabled
+    if (session.ImportFeesEnabled) {
+      const defaultVATInput = document.getElementById("default-vat")
+      if (defaultVATInput) {
+        const defaultVATPercent = parseFloat(defaultVATInput.value)
+        if (!isNaN(defaultVATPercent) && defaultVATPercent >= 0 && defaultVATPercent <= 100) {
+          session.defaultVAT = defaultVATPercent / 100
+        } else {
+          session.defaultVAT = null
+        }
+      }
+    }
 
     browser.runtime
       .sendMessage({
@@ -2350,6 +2543,301 @@ function renderDeliveryRulesView() {
       })
   })
 }
+
+// Customs Category Modals
+function showNewCustomsCategoryModal() {
+  const session = sessions.find(s => s.id === currentSession)
+  // Get current defaultVAT value from input field if it exists (already in percentage)
+  const defaultVATInput = document.getElementById("default-vat")
+  let defaultVATPercentage = ''
+  if (defaultVATInput && defaultVATInput.value) {
+    // Input field exists and has a value - it's already in percentage format
+    defaultVATPercentage = defaultVATInput.value
+  } else if (session.defaultVAT) {
+    // No input value, use session value and convert from decimal to percentage
+    defaultVATPercentage = (session.defaultVAT * 100)
+  }
+  const modal = document.createElement("div")
+  modal.innerHTML = `
+    <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
+      <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-medium card-text mb-4">${t("deliveryRules.newCategory")}</h3>
+        
+        <div class="mb-6">
+          <label for="category-name" class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.categoryName")}</label>
+          <input 
+            type="text" 
+            id="category-name" 
+            placeholder="${t("modals.enterCategoryName")}"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+        </div>
+
+        <div class="mb-6">
+          <label for="duty-rate" class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.dutyRate")} (%)</label>
+          <input 
+            type="number" 
+            id="duty-rate" 
+            step="0.01"
+            min="0"
+            max="100"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+        </div>
+
+        <div class="mb-6">
+          <label for="vat-rate" class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.vatRate")} (%)</label>
+          <input 
+            type="number" 
+            id="vat-rate" 
+            value="${defaultVATPercentage}"
+            step="0.01"
+            min="0"
+            max="100"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+        </div>
+
+        <div class="flex justify-end space-x-4">
+          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
+          <button id="save-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">${t("common.save")}</button>
+        </div>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  const closeModal = () => {
+    clearAllErrors(modal)
+    document.body.removeChild(modal)
+  }
+
+  const save = () => {
+    clearAllErrors(modal)
+
+    if (!validateRequiredField('category-name', t("deliveryRules.categoryName"))) return
+    if (!validateRequiredField('duty-rate', t("deliveryRules.dutyRate"))) return
+    if (!validateRequiredField('vat-rate', t("deliveryRules.vatRate"))) return
+
+    const name = document.getElementById("category-name").value.trim()
+    const dutyRatePercent = parseFloat(document.getElementById("duty-rate").value)
+    const vatRatePercent = parseFloat(document.getElementById("vat-rate").value)
+
+    if (isNaN(dutyRatePercent) || dutyRatePercent < 0 || dutyRatePercent > 100) {
+      showFieldError('duty-rate', t("modals.invalidNumber"))
+      return
+    }
+
+    if (isNaN(vatRatePercent) || vatRatePercent < 0 || vatRatePercent > 100) {
+      showFieldError('vat-rate', t("modals.invalidNumber"))
+      return
+    }
+
+    // Convert percentages to decimals for storage
+    const dutyRate = dutyRatePercent / 100
+    const vatRate = vatRatePercent / 100
+
+    const category = { name, dutyRate, vatRate }
+
+    // Get current defaultVAT from the main view inputs to persist it
+    let defaultVAT = null
+    const defaultVATInput = document.getElementById("default-vat")
+    if (defaultVATInput) {
+      const val = parseFloat(defaultVATInput.value)
+      if (!isNaN(val) && val >= 0 && val <= 100) {
+        defaultVAT = val / 100
+      }
+    }
+
+    browser.runtime.sendMessage({
+      action: "createCustomsCategory",
+      sessionId: currentSession,
+      category,
+      defaultVAT
+    }).then(response => {
+      sessions = response.sessions
+      closeModal()
+      renderApp()
+    })
+  }
+
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, save)
+
+  document.getElementById("modalOverlay").addEventListener("click", closeModal)
+  document.getElementById("modalContent").addEventListener("click", e => e.stopPropagation())
+  document.getElementById("cancel-button").addEventListener("click", closeModal)
+  document.getElementById("save-button").addEventListener("click", save)
+}
+
+function showEditCustomsCategoryModal(category) {
+  const modal = document.createElement("div")
+  modal.innerHTML = `
+    <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
+      <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-medium card-text mb-4">${t("deliveryRules.editCategory")}</h3>
+        
+        <div class="mb-6">
+          <label for="category-name" class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.categoryName")}</label>
+          <input 
+            type="text" 
+            id="category-name" 
+            value="${category.name}"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+        </div>
+
+        <div class="mb-6">
+          <label for="duty-rate" class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.dutyRate")} (%)</label>
+          <input 
+            type="number" 
+            id="duty-rate" 
+            value="${(category.dutyRate * 100)}"
+            step="0.01"
+            min="0"
+            max="100"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+        </div>
+
+        <div class="mb-6">
+          <label for="vat-rate" class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.vatRate")} (%)</label>
+          <input 
+            type="number" 
+            id="vat-rate" 
+            value="${(category.vatRate * 100)}"
+            step="0.01"
+            min="0"
+            max="100"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          >
+        </div>
+
+        <div class="flex justify-end space-x-4">
+          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
+          <button id="save-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">${t("common.save")}</button>
+        </div>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  const closeModal = () => {
+    clearAllErrors(modal)
+    document.body.removeChild(modal)
+  }
+
+  const save = () => {
+    clearAllErrors(modal)
+
+    if (!validateRequiredField('category-name', t("deliveryRules.categoryName"))) return
+    if (!validateRequiredField('duty-rate', t("deliveryRules.dutyRate"))) return
+    if (!validateRequiredField('vat-rate', t("deliveryRules.vatRate"))) return
+
+    const name = document.getElementById("category-name").value.trim()
+    const dutyRatePercent = parseFloat(document.getElementById("duty-rate").value)
+    const vatRatePercent = parseFloat(document.getElementById("vat-rate").value)
+
+    if (isNaN(dutyRatePercent) || dutyRatePercent < 0 || dutyRatePercent > 100) {
+      showFieldError('duty-rate', t("modals.invalidNumber"))
+      return
+    }
+
+    if (isNaN(vatRatePercent) || vatRatePercent < 0 || vatRatePercent > 100) {
+      showFieldError('vat-rate', t("modals.invalidNumber"))
+      return
+    }
+
+    // Convert percentages to decimals for storage
+    const dutyRate = dutyRatePercent / 100
+    const vatRate = vatRatePercent / 100
+
+    const updatedCategory = { name, dutyRate, vatRate }
+
+    // Get current defaultVAT from the main view inputs to persist it
+    let defaultVAT = null
+    const defaultVATInput = document.getElementById("default-vat")
+    if (defaultVATInput) {
+      const val = parseFloat(defaultVATInput.value)
+      if (!isNaN(val) && val >= 0 && val <= 100) {
+        defaultVAT = val / 100
+      }
+    }
+
+    browser.runtime.sendMessage({
+      action: "updateCustomsCategory",
+      sessionId: currentSession,
+      categoryId: category.id,
+      updatedCategory,
+      defaultVAT
+    }).then(response => {
+      sessions = response.sessions
+      closeModal()
+      renderApp()
+    })
+  }
+
+  setupAutoFocus(modal)
+  setupEscapeKey(modal, closeModal)
+  setupEnterKey(modal, save)
+
+  document.getElementById("modalOverlay").addEventListener("click", closeModal)
+  document.getElementById("modalContent").addEventListener("click", e => e.stopPropagation())
+  document.getElementById("cancel-button").addEventListener("click", closeModal)
+  document.getElementById("save-button").addEventListener("click", save)
+}
+
+function showDeleteCustomsCategoryModal(categoryId) {
+  const modal = document.createElement("div")
+  modal.innerHTML = `
+    <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
+      <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-medium card-text mb-4">${t("deliveryRules.deleteCategory")}</h3>
+        <p class="muted-text mb-6">${t("deliveryRules.confirmDeleteCategory")}</p>
+        
+        <div class="flex justify-end space-x-4">
+          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
+          <button id="delete-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">${t("common.delete")}</button>
+        </div>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  const close = () => document.body.removeChild(modal)
+
+  document.getElementById("modalOverlay").addEventListener("click", close)
+  document.getElementById("modalContent").addEventListener("click", e => e.stopPropagation())
+  document.getElementById("cancel-button").addEventListener("click", close)
+
+  document.getElementById("delete-button").addEventListener("click", () => {
+    // Get current defaultVAT from the main view inputs to persist it
+    let defaultVAT = null
+    const defaultVATInput = document.getElementById("default-vat")
+    if (defaultVATInput) {
+      const val = parseFloat(defaultVATInput.value)
+      if (!isNaN(val) && val >= 0 && val <= 100) {
+        defaultVAT = val / 100
+      }
+    }
+
+    browser.runtime.sendMessage({
+      action: "deleteCustomsCategory",
+      sessionId: currentSession,
+      categoryId,
+      defaultVAT
+    }).then(response => {
+      sessions = response.sessions
+      close()
+      renderApp()
+    })
+  })
+}
+
 
 function getUniqueSellers(session) {
   const sellers = new Set()
@@ -2537,12 +3025,14 @@ function showNewAlternativeGroupModal() {
           <input type="text" id="group-name" placeholder="${t("alternatives.groupNamePlaceholder")}" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
         </div>
 
+        ${session.manageQuantity !== false ? `
         <div class="mb-4 card-bg border border-default rounded-lg p-3">
           <div class="flex">
             <span class="icon icon-warning h-5 w-5 muted-text mr-2 flex-shrink-0"></span>
             <p class="text-sm muted-text">${t("alternatives.quantityInfo")}</p>
           </div>
         </div>
+        ` : ''}
 
         <div class="flex-1 overflow-y-auto mb-4">
           <label class="block text-sm font-medium secondary-text mb-2">${t("alternatives.options")}</label>
@@ -2713,12 +3203,14 @@ function showEditAlternativeGroupModal(group) {
           <input type="text" id="group-name" value="${group.name}" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
         </div>
 
+        ${session.manageQuantity !== false ? `
         <div class="mb-4 card-bg border border-default rounded-lg p-3">
           <div class="flex">
             <span class="icon icon-warning h-5 w-5 muted-text mr-2 flex-shrink-0"></span>
             <p class="text-sm muted-text">${t("alternatives.quantityInfo")}</p>
           </div>
         </div>
+        ` : ''}
 
         <div class="flex-1 overflow-y-auto mb-4">
           <label class="block text-sm font-medium secondary-text mb-2">${t("alternatives.options")}</label>

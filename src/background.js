@@ -94,6 +94,20 @@ const messageHandlers = {
     return { success: true, sessions, currentSession }
   },
 
+  // Customs categories
+  createCustomsCategory: (message) => {
+    createCustomsCategory(message.sessionId, message.category, message.defaultVAT)
+    return { success: true, sessions, currentSession }
+  },
+  updateCustomsCategory: (message) => {
+    updateCustomsCategory(message.sessionId, message.categoryId, message.updatedCategory, message.defaultVAT)
+    return { success: true, sessions, currentSession }
+  },
+  deleteCustomsCategory: (message) => {
+    deleteCustomsCategory(message.sessionId, message.categoryId, message.defaultVAT)
+    return { success: true, sessions, currentSession }
+  },
+
   // Read-only queries
   getSessions: () => ({ sessions, currentSession }),
   getCurrentSession: () => ({ currentSession }),
@@ -166,6 +180,8 @@ function createSession(data) {
     id: Date.now().toString(),
     name: data.name,
     manageQuantity: data.manageQuantity,
+    ImportFeesEnabled: data.ImportFeesEnabled,
+    customsCategories: [],
     products: [],
     bundles: [],
     alternativeGroups: [],
@@ -379,5 +395,44 @@ async function optimizeSession(sessionId) {
     return { success: true, result }
   } catch (error) {
     return { success: false, error: error.message }
+  }
+}
+
+// Customs Category management
+function createCustomsCategory(sessionId, category, defaultVAT) {
+  const session = sessions.find((s) => s.id === sessionId)
+  if (session) {
+    if (!session.customsCategories) session.customsCategories = []
+    category.id = Date.now().toString()
+    session.customsCategories.push(category)
+    if (defaultVAT !== undefined && defaultVAT !== null) {
+      session.defaultVAT = defaultVAT
+    }
+    saveToStorage()
+  }
+}
+
+function updateCustomsCategory(sessionId, categoryId, updatedCategory, defaultVAT) {
+  const session = sessions.find((s) => s.id === sessionId)
+  if (session && session.customsCategories) {
+    const categoryIndex = session.customsCategories.findIndex((c) => c.id === categoryId)
+    if (categoryIndex !== -1) {
+      session.customsCategories[categoryIndex] = { ...session.customsCategories[categoryIndex], ...updatedCategory }
+      if (defaultVAT !== undefined && defaultVAT !== null) {
+        session.defaultVAT = defaultVAT
+      }
+      saveToStorage()
+    }
+  }
+}
+
+function deleteCustomsCategory(sessionId, categoryId, defaultVAT) {
+  const session = sessions.find((s) => s.id === sessionId)
+  if (session && session.customsCategories) {
+    session.customsCategories = session.customsCategories.filter((c) => c.id !== categoryId)
+    if (defaultVAT !== undefined && defaultVAT !== null) {
+      session.defaultVAT = defaultVAT
+    }
+    saveToStorage()
   }
 }

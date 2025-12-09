@@ -17,6 +17,7 @@
         "editSession": "Modifier la session",
         "deleteSession": "Supprimer la session",
         "manageQuantities": "Gérer les quantités",
+        "ImportFeesManagement": "Gérer les frais d'importation",
         "deleteAllSessions": "Supprimer toutes les sessions",
         "sessionName": "Nom de la session",
         "enterSessionName": "Entrez le nom de la session",
@@ -125,7 +126,21 @@
         "maxOrderValue": "Valeur max de commande",
         "saveRules": "Enregistrer les règles de livraison",
         "globalRules": "Règles globales",
-        "sellerRules": "Règles spécifiques au vendeur"
+        "sellerRules": "Règles spécifiques au vendeur",
+        "importFeeSection": "Configuration des frais d'importation",
+        "defaultVAT": "Taux de TVA par défaut",
+        "productCategories": "Catégories de produits",
+        "categoryName": "Nom de la catégorie",
+        "dutyRate": "Taux de droits de douane",
+        "vatRate": "Taux de TVA",
+        "addCategory": "Ajouter une catégorie",
+        "editCategory": "Modifier la catégorie",
+        "deleteCategory": "Supprimer la catégorie",
+        "newCategory": "Nouvelle catégorie douanière",
+        "noCategoriesYet": "Aucune catégorie douanière créée",
+        "confirmDeleteCategory": "Êtes-vous sûr de vouloir supprimer cette catégorie douanière ?",
+        "customsClearanceFees": "Frais de dédouanement",
+        "customsClearanceFeesHelp": "Ces frais sont pour certains services de livraison qui facturent la gestion de la déclaration en douane et l'avance des taxes applicables."
     },
     "scraping": {
         "title": "Ajouter au produit",
@@ -178,7 +193,12 @@
         "minOne": "Doit être au moins 1",
         "itemsPerPurchaseRequired": "Articles par achat est requis",
         "maxPerPurchaseHelpBundle": "Nombre maximum de fois que vous pouvez acheter ce lot",
-        "qtyPlaceholder": "Qté"
+        "qtyPlaceholder": "Qté",
+        "customsCategory": "Catégorie douanière",
+        "noCustomsDuties": "Pas de droits d'importation",
+        "selectCategory": "Sélectionnez une catégorie",
+        "enterCategoryName": "Entrez le nom de la catégorie",
+        "howToAddCategory": "Pour ajouter une nouvelle catégorie, allez dans Règles de livraison > Configuration des taxes douanières"
     },
     "optimization": {
         "title": "Optimisation",

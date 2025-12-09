@@ -17,6 +17,7 @@
         "editSession": "Edit Session",
         "deleteSession": "Delete Session",
         "manageQuantities": "Manage quantities",
+        "ImportFeesManagement": "Manage import fees",
         "deleteAllSessions": "Delete all sessions",
         "sessionName": "Session name",
         "enterSessionName": "Enter session name",
@@ -125,7 +126,21 @@
         "maxOrderValue": "Max order value",
         "saveRules": "Save Delivery Rules",
         "globalRules": "Global rules",
-        "sellerRules": "Seller-specific rules"
+        "sellerRules": "Seller-specific rules",
+        "importFeeSection": "Import Fee Configuration",
+        "defaultVAT": "Default VAT Rate",
+        "productCategories": "Product Categories",
+        "categoryName": "Category Name",
+        "dutyRate": "Customs Duty Rate",
+        "vatRate": "VAT Rate",
+        "addCategory": "Add Category",
+        "editCategory": "Edit Category",
+        "deleteCategory": "Delete Category",
+        "newCategory": "New Customs Category",
+        "noCategoriesYet": "No customs categories created yet",
+        "confirmDeleteCategory": "Are you sure you want to delete this customs category?",
+        "customsClearanceFees": "Customs clearance fees",
+        "customsClearanceFeesHelp": "These fees are for certain delivery services that charge for customs declaration processing and advance payment of applicable taxes."
     },
     "scraping": {
         "title": "Add to Product",
@@ -178,7 +193,12 @@
         "minOne": "Must be at least 1",
         "itemsPerPurchaseRequired": "Items per purchase is required",
         "maxPerPurchaseHelpBundle": "Maximum number of times you can purchase from this bundle",
-        "qtyPlaceholder": "Qty"
+        "qtyPlaceholder": "Qty",
+        "customsCategory": "Customs Category",
+        "noCustomsDuties": "No customs duties",
+        "selectCategory": "Select a category",
+        "enterCategoryName": "Enter category name",
+        "howToAddCategory": "To add a new category, go to Delivery Rules > Customs Tax Configuration"
     },
     "optimization": {
         "title": "Optimization",

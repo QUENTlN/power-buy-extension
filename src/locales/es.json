@@ -17,6 +17,7 @@
         "editSession": "Editar sesión",
         "deleteSession": "Eliminar sesión",
         "manageQuantities": "Administrar cantidades",
+        "ImportFeesManagement": "Administrar tasas de importación",
         "deleteAllSessions": "Eliminar todas las sesiones",
         "sessionName": "Nombre de la sesión",
         "enterSessionName": "Ingrese el nombre de la sesión",
@@ -125,7 +126,21 @@
         "maxOrderValue": "Valor máx de pedido",
         "saveRules": "Guardar reglas de entrega",
         "globalRules": "Reglas globales",
-        "sellerRules": "Reglas específicas del vendedor"
+        "sellerRules": "Reglas específicas del vendedor",
+        "importFeeSection": "Configuración de las tasas de importación",
+        "defaultVAT": "Tasa de IVA predeterminada",
+        "productCategories": "Categorías de productos",
+        "categoryName": "Nombre de la categoría",
+        "dutyRate": "Tasa de derechos aduaneros",
+        "vatRate": "Tasa de IVA",
+        "addCategory": "Agregar categoría",
+        "editCategory": "Editar categoría",
+        "deleteCategory": "Eliminar categoría",
+        "newCategory": "Nueva categoría aduanera",
+        "noCategoriesYet": "No se han creado categorías aduaneras",
+        "confirmDeleteCategory": "¿Está seguro de que desea eliminar esta categoría aduanera?",
+        "customsClearanceFees": "Gastos de despacho aduanero",
+        "customsClearanceFeesHelp": "Estos gastos corresponden a determinados servicios de entrega que facturan la gestión de la declaración de aduana y el anticipo de los impuestos aplicables."
     },
     "scraping": {
         "title": "Agregar al producto",
@@ -178,7 +193,12 @@
         "minOne": "Debe ser al menos 1",
         "itemsPerPurchaseRequired": "Artículos por compra es obligatorio",
         "maxPerPurchaseHelpBundle": "Número máximo de veces que puede comprar este paquete",
-        "qtyPlaceholder": "Cant."
+        "qtyPlaceholder": "Cant.",
+        "customsCategory": "Categoría aduanera",
+        "noCustomsDuties": "Sin derechos de aduana",
+        "selectCategory": "Seleccione una categoría",
+        "enterCategoryName": "Ingrese el nombre de la categoría",
+        "howToAddCategory": "Para añadir una nueva categoría, vaya a Reglas de entrega > Configuración de impuestos aduaneros"
     },
     "optimization": {
         "title": "Optimización",
