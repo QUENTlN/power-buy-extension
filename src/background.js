@@ -26,7 +26,7 @@ function saveToStorage() {
 const messageHandlers = {
   // Sessions
   createSession: (message) => {
-    createSession(message)
+    createSession(message.session)
     return { success: true, sessions, currentSession }
   },
   updateSession: (message) => {
@@ -53,8 +53,8 @@ const messageHandlers = {
   },
 
   // Pages
-  addPage: (message) => {
-    addPage(message.sessionId, message.productId, message.page)
+  createPage: (message) => {
+    createPage(message.sessionId, message.productId, message.page)
     return { success: true, sessions, currentSession }
   },
   deletePage: (message) => {
@@ -180,7 +180,7 @@ function createSession(data) {
     id: Date.now().toString(),
     name: data.name,
     manageQuantity: data.manageQuantity,
-    ImportFeesEnabled: data.ImportFeesEnabled,
+    importFeesEnabled: data.importFeesEnabled,
     customsCategories: [],
     products: [],
     bundles: [],
@@ -234,7 +234,7 @@ function deleteProduct(sessionId, productId) {
 }
 
 // Page management
-function addPage(sessionId, productId, page) {
+function createPage(sessionId, productId, page) {
   const session = sessions.find((s) => s.id === sessionId)
   if (session) {
     const product = session.products.find((p) => p.id === productId)

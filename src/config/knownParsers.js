@@ -69,6 +69,26 @@ let knownParsers = {
       param: "store_name",
     },
   },
+  pccomponentes: {
+    price: {
+      strategy: "extractPrice",
+      selector: "#pdp-price-current-integer",
+    },
+    shippingPrice: {
+      strategy: "none",
+    },
+    insurancePrice: {
+      strategy: "extractPrice",
+      selector: "#pdp-section-warranties-list > div:nth-child(3) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)",
+    },
+    priceCurrency: {
+      strategy: "extractCurrency",
+      selector: "#pdp-price-current-integer",
+    },
+    seller: {
+      strategy: "domainName",
+    },
+  },
   // Add more known parsers here
 }
 

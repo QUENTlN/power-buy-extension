@@ -638,25 +638,26 @@ function showNewSessionModal() {
     }
     
     const name = document.getElementById("session-name").value.trim()
+    const manageQuantity = document.getElementById("manage-quantities").checked
+    const importFeesEnabled = document.getElementById("import-fees-management").checked
     
     if (sessions.some(s => s.name === name)) {
       showFieldError('session-name', t("sessions.sessionExists"))
       return
     }
 
-    browser.runtime
-      .sendMessage({
-        action: "createSession",
-        name,
-        manageQuantity: document.getElementById("manage-quantities").checked,
-        ImportFeesEnabled: document.getElementById("import-fees-management").checked,
-      })
-      .then((response) => {
-        sessions = response.sessions
-        currentSession = response.currentSession
-        closeModal()
-        renderApp()
-      })
+    const session = {
+      name,
+      manageQuantity,
+      importFeesEnabled,
+    }
+
+    SidebarAPI.createSession(session).then((response) => {
+      sessions = response.sessions
+      currentSession = response.currentSession
+      closeModal()
+      renderApp()
+    })
   }
 
   setupAutoFocus(modal)
@@ -691,7 +692,7 @@ function showEditSessionModal(session) {
   const modal = document.createElement("div") 
   modal.innerHTML = `
       <div id="modalOverlay" class="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-        <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
           <h3 class="text-lg font-medium card-text mb-4">${t("sessions.editSession")}</h3>
           <div class="mb-6">
             <input 
@@ -716,7 +717,7 @@ function showEditSessionModal(session) {
             <label class="text-sm font-medium secondary-text">${t("sessions.ImportFeesManagement")}</label>
             <div class="flex items-center">
               <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" id="import-fees-management" class="sr-only peer" ${session.ImportFeesEnabled ? "checked" : ""}>
+                <input type="checkbox" id="import-fees-management" class="sr-only peer" ${session.importFeesEnabled ? "checked" : ""}>
                 <div class="toggle-switch"></div>
               </label>
             </div>
@@ -746,20 +747,21 @@ function showEditSessionModal(session) {
       return
     }
     
-    const name = document.getElementById("session-name").value.trim()
-    session.name = name
-    session.manageQuantity = document.getElementById("manage-quantities").checked
-    session.ImportFeesEnabled = document.getElementById("import-fees-management").checked
-    browser.runtime
-      .sendMessage({
-        action: "updateSession",
-        session,
-      })
-      .then((response) => {
-        sessions = response.sessions
-        closeModal()
-        renderApp()
-      })
+    const name = modal.querySelector("#session-name").value.trim()
+    const manageQuantity = modal.querySelector("#manage-quantities").checked
+    const importFeesEnabled = modal.querySelector("#import-fees-management").checked
+    
+    const updatedSession = { ...session }
+    
+    updatedSession.name = name
+    updatedSession.manageQuantity = manageQuantity
+    updatedSession.importFeesEnabled = importFeesEnabled
+
+    SidebarAPI.updateSession(session.id, updatedSession).then((response) => {
+      sessions = response.sessions
+      closeModal()
+      renderApp()
+    })
   }
 
   setupAutoFocus(modal)
@@ -810,17 +812,12 @@ function showDeleteSessionModal(sessionId) {
   })
 
   document.getElementById("delete-button").addEventListener("click", () => {
-    browser.runtime
-      .sendMessage({
-        action: "deleteSession",
-        sessionId,
-      })
-      .then((response) => {
-        sessions = response.sessions
-        currentSession = response.currentSession
-        document.body.removeChild(modal)
-        renderApp()
-      })
+    SidebarAPI.deleteSession(sessionId).then((response) => {
+      sessions = response.sessions
+      currentSession = response.currentSession
+      document.body.removeChild(modal)
+      renderApp()
+    })
   })
 }
 
@@ -1045,7 +1042,6 @@ function showEditProductModal(product) {
 
 
 
-        ${session.manageQuantity !== false ? `
         <div class="mb-6" id="limited-compatibility-section" style="display:none;">
           <label class="block text-sm font-medium secondary-text mb-1">${t("modals.limitedCompatibility")}</label>
           <p class="mt-1 text-sm muted-text">${t("modals.compatibilityHelpEdit")}</p>
@@ -1059,7 +1055,6 @@ function showEditProductModal(product) {
             `).join('')}
           </div>
         </div>
-        ` : ''}
         
         <div class="flex justify-end space-x-4">
           <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
@@ -1243,7 +1238,7 @@ function showEditPageModal(page) {
           >
         </div>
 
-        ${session.ImportFeesEnabled ? `
+        ${session.importFeesEnabled ? `
         <div class="mb-6">
           <div class="flex items-center mb-1">
             <label for="customs-category" class="text-sm font-medium secondary-text">${t("modals.customsCategory")}</label>
@@ -1356,19 +1351,11 @@ function showEditPageModal(page) {
       ...(customsCategoryId && { customsCategoryId }),
     }
 
-    browser.runtime
-      .sendMessage({
-        action: "updatePage",
-        sessionId: currentSession,
-        productId: currentProduct,
-        pageId: page.id,
-        updatedPage,
-      })
-      .then((response) => {
-        sessions = response.sessions
-        closeModal()
-        renderApp()
-      })
+    SidebarAPI.updatePage(currentSession, currentProduct, page.id, updatedPage).then((response) => {
+      sessions = response.sessions
+      closeModal()
+      renderApp()
+    })
   }
 
   setupAutoFocus(modal)
@@ -1496,7 +1483,7 @@ function showEditBundleModal(bundle) {
           >
         </div>
 
-        ${session.ImportFeesEnabled ? `
+        ${session.importFeesEnabled ? `
         <div class="mb-6">
           <div class="flex items-center mb-1">
             <label for="customs-category" class="text-sm font-medium secondary-text">${t("modals.customsCategory")}</label>
@@ -1628,18 +1615,11 @@ function showEditBundleModal(bundle) {
       ...(customsCategoryId && { customsCategoryId }),
     }
 
-    browser.runtime
-      .sendMessage({
-        action: "updateBundle",
-        sessionId: currentSession,
-        bundleId: bundle.id,
-        updatedBundle,
-      })
-      .then((response) => {
-        sessions = response.sessions
-        closeModal()
-        renderApp()
-      })
+    SidebarAPI.updateBundle(currentSession, bundle.id, updatedBundle).then((response) => {
+      sessions = response.sessions
+      closeModal()
+      renderApp()
+    })
   }
 
   setupAutoFocus(modal)
@@ -1689,17 +1669,11 @@ function showDeleteBundleModal(bundleId) {
   })
 
   document.getElementById("delete-button").addEventListener("click", () => {
-    browser.runtime
-      .sendMessage({
-        action: "deleteBundle",
-        sessionId: currentSession,
-        bundleId,
-      })
-      .then((response) => {
-        sessions = response.sessions
-        document.body.removeChild(modal)
-        renderApp()
-      })
+    SidebarAPI.deleteBundle(currentSession, bundleId).then((response) => {
+      sessions = response.sessions
+      document.body.removeChild(modal)
+      renderApp()
+    })
   })
 }
 
@@ -1737,17 +1711,11 @@ function showDeleteProductModal(productId) {
   })
 
   document.getElementById("delete-button").addEventListener("click", () => {
-    browser.runtime
-      .sendMessage({
-        action: "deleteProduct",
-        sessionId: currentSession,
-        productId,
-      })
-      .then((response) => {
-        sessions = response.sessions
-        document.body.removeChild(modal)
-        renderApp()
-      })
+    SidebarAPI.deleteProduct(currentSession, productId).then((response) => {
+      sessions = response.sessions
+      document.body.removeChild(modal)
+      renderApp()
+    })
   })
 }
 
@@ -1785,18 +1753,11 @@ function showDeletePageModal(pageId) {
   })
 
   document.getElementById("delete-button").addEventListener("click", () => {
-    browser.runtime
-      .sendMessage({
-        action: "deletePage",
-        sessionId: currentSession,
-        productId: currentProduct,
-        pageId,
-      })
-      .then((response) => {
-        sessions = response.sessions
-        document.body.removeChild(modal)
-        renderApp()
-      })
+    SidebarAPI.deletePage(currentSession, currentProduct, pageId).then((response) => {
+      sessions = response.sessions
+      document.body.removeChild(modal)
+      renderApp()
+    })
   })
 }
 
@@ -1928,7 +1889,7 @@ function showScrapedDataModal() {
           >
         </div>
 
-        ${session.ImportFeesEnabled ? `
+        ${session.importFeesEnabled ? `
         <div class="mb-6">
           <div class="flex items-center mb-1">
             <label for="customs-category" class="text-sm font-medium secondary-text">${t("modals.customsCategory")}</label>
@@ -2075,18 +2036,12 @@ function showScrapedDataModal() {
         bundle.products.push({ productId, quantity })
       })
 
-      browser.runtime
-        .sendMessage({
-          action: "createBundle",
-          sessionId: currentSession,
-          bundle,
-        })
-        .then((response) => {
-          sessions = response.sessions
-          closeModal()
-          currentView = "pages"
-          renderApp()
-        })
+      SidebarAPI.createBundle(currentSession, bundle).then((response) => {
+        sessions = response.sessions
+        closeModal()
+        currentView = "pages"
+        renderApp()
+      })
     } else {
             const page = {
         url,
@@ -2101,19 +2056,12 @@ function showScrapedDataModal() {
         timestamp: new Date().toISOString(),
       }
 
-      browser.runtime
-        .sendMessage({
-          action: "addPage",
-          sessionId: currentSession,
-          productId: currentProduct,
-          page,
-        })
-        .then((response) => {
-          sessions = response.sessions
-          closeModal()
-          currentView = "pages"
-          renderApp()
-        })
+      SidebarAPI.createPage(currentSession, currentProduct, page).then((response) => {
+        sessions = response.sessions
+        closeModal()
+        currentView = "pages"
+        renderApp()
+      })
     }
   }
 
@@ -2154,7 +2102,7 @@ function renderDeliveryRulesView() {
 
       <p class="text-sm muted-text mb-6">${t("deliveryRules.subtitle")}</p>
 
-      ${session.ImportFeesEnabled ? `
+      ${session.importFeesEnabled ? `
       <!-- Customs Tax Configuration -->
       <div class="mb-8 card-bg rounded-xl shadow-md p-6 border border-default">
         <h2 class="text-xl font-semibold card-text mb-4">${t("deliveryRules.importFeeSection")}</h2>
@@ -2270,7 +2218,7 @@ function renderDeliveryRulesView() {
               </div>
             </div>
 
-            ${session.ImportFeesEnabled ? `
+            ${session.importFeesEnabled ? `
             <div class="mb-4" style="display: ${copiedFrom !== 'None' ? 'none' : 'block'}">
               <label class="block text-sm font-medium secondary-text mb-1">
                 ${t("deliveryRules.customsClearanceFees")}
@@ -2455,7 +2403,7 @@ function renderDeliveryRulesView() {
     session.deliveryRules = deliveryRules
 
     // Save defaultVAT if customs tax is enabled
-    if (session.ImportFeesEnabled) {
+    if (session.importFeesEnabled) {
       const defaultVATInput = document.getElementById("default-vat")
       if (defaultVATInput) {
         const defaultVATPercent = parseFloat(defaultVATInput.value)
@@ -2467,17 +2415,11 @@ function renderDeliveryRulesView() {
       }
     }
 
-    browser.runtime
-      .sendMessage({
-        action: "updateSession",
-        sessionId: currentSession,
-        updatedSession: session,
-      })
-      .then((response) => {
-        sessions = response.sessions
-        currentView = "products"
-        renderApp()
-      })
+    SidebarAPI.updateSession(currentSession, session).then((response) => {
+      sessions = response.sessions
+      currentView = "products"
+      renderApp()
+    })
   })
 }
 
@@ -2587,12 +2529,7 @@ function showNewCustomsCategoryModal() {
       }
     }
 
-    browser.runtime.sendMessage({
-      action: "createCustomsCategory",
-      sessionId: currentSession,
-      category,
-      defaultVAT
-    }).then(response => {
+    SidebarAPI.createCustomsCategory(currentSession, category, defaultVAT).then((response) => {
       sessions = response.sessions
       closeModal()
       renderApp()
@@ -2704,13 +2641,7 @@ function showEditCustomsCategoryModal(category) {
       }
     }
 
-    browser.runtime.sendMessage({
-      action: "updateCustomsCategory",
-      sessionId: currentSession,
-      categoryId: category.id,
-      updatedCategory,
-      defaultVAT
-    }).then(response => {
+    SidebarAPI.updateCustomsCategory(currentSession, category.id, updatedCategory, defaultVAT).then(() => {
       sessions = response.sessions
       closeModal()
       renderApp()
@@ -2762,12 +2693,7 @@ function showDeleteCustomsCategoryModal(categoryId) {
       }
     }
 
-    browser.runtime.sendMessage({
-      action: "deleteCustomsCategory",
-      sessionId: currentSession,
-      categoryId,
-      defaultVAT
-    }).then(response => {
+    SidebarAPI.deleteCustomsCategory(currentSession, categoryId, defaultVAT).then((response) => {
       sessions = response.sessions
       close()
       renderApp()

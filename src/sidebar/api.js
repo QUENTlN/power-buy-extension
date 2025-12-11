@@ -7,6 +7,13 @@ const SidebarAPI = {
     return browser.runtime.sendMessage({ action: "getSessions" })
   },
 
+  createSession(session) {
+    return browser.runtime.sendMessage({
+      action: "createSession",
+      session,
+    })
+  },
+
   updateSession(sessionId, updatedSession) {
     return browser.runtime.sendMessage({
       action: "updateSession",
@@ -15,10 +22,10 @@ const SidebarAPI = {
     })
   },
 
-  createSession(name) {
+  deleteSession(sessionId) {
     return browser.runtime.sendMessage({
-      action: "createSession",
-      name,
+      action: "deleteSession",
+      sessionId,
     })
   },
 
@@ -47,9 +54,9 @@ const SidebarAPI = {
   },
 
   // Pages
-  addPage(sessionId, productId, page) {
+  createPage(sessionId, productId, page) {
     return browser.runtime.sendMessage({
-      action: "addPage",
+      action: "createPage",
       sessionId,
       productId,
       page,
@@ -124,6 +131,34 @@ const SidebarAPI = {
       action: "deleteAlternativeGroup",
       sessionId,
       groupId,
+    })
+  },
+
+  // Customs Categories
+  createCustomsCategory(sessionId, category, defaultVAT) {
+    return browser.runtime.sendMessage({
+      action: "createCustomsCategory",
+      sessionId,
+      category,
+      defaultVAT,
+    })
+  },
+
+  updateCustomsCategory(sessionId, categoryId, updatedCategory, defaultVAT) {
+    return browser.runtime.sendMessage({
+      action: "updateCustomsCategory",
+      sessionId,
+      categoryId,
+      updatedCategory,
+      defaultVAT,
+    })
+  },
+
+  deleteCustomsCategory(sessionId, categoryId) {
+    return browser.runtime.sendMessage({
+      action: "deleteCustomsCategory",
+      sessionId,
+      categoryId,
     })
   },
 
