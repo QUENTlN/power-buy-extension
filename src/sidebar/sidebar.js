@@ -1,20 +1,24 @@
 const app = document.getElementById("app")
 
 async function init() {
-  browser.storage.local.get(["darkMode"]).then((settings) => {
+  browser.storage.local.get(["darkMode", "currency"]).then(async (settings) => {
     if (settings.darkMode) {
       document.documentElement.classList.add("dark")
     } else {
       document.documentElement.classList.remove("dark")
     }
-  })
-
-  await initI18n()
-
-  SidebarAPI.getSessions().then((response) => {
-    sessions = response.sessions
-    currentSession = response.currentSession
-    renderApp()
+    
+    const currencyCode = settings.currency || DEFAULT_CURRENCY
+    const currency = CURRENCIES.find(c => c.code === currencyCode)
+    if (currency) currentCurrencySymbol = currency.symbol
+    
+    await initI18n()
+    
+    SidebarAPI.getSessions().then((response) => {
+      sessions = response.sessions
+      currentSession = response.currentSession
+      renderApp()
+    })
   })
 
   // Listen for messages from background script
@@ -495,7 +499,7 @@ function renderPagesView() {
 
 function renderSettingsView() {
   // Get settings from storage
-  browser.storage.local.get(["darkMode", "language", "currency"]).then((settings) => {
+  browser.storage.local.get(["darkMode", "language", "currency", "defaultWeightUnit", "defaultVolumeUnit", "defaultDimensionUnit", "defaultDistanceUnit"]).then((settings) => {
     app.innerHTML = `
       <div class="mx-4">
       <!-- Header -->
@@ -512,14 +516,14 @@ function renderSettingsView() {
       <div class="space-y-6">
         <div class="card-bg rounded-xl shadow-md p-4">
         <label class="block text-sm font-medium secondary-text mb-1">${t("settings.language")}</label>
-        <select id="language" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+        <select id="language" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
           ${LANGUAGES.map(lang => `<option value="${lang.code}" ${(settings.language || getCurrentLanguage()) === lang.code ? "selected" : ""}>${lang.nativeName}</option>`).join('')}
         </select>
         </div>
 
         <div class="card-bg rounded-xl shadow-md p-4">
         <label class="block text-sm font-medium secondary-text mb-1">${t("settings.defaultCurrency")}</label>
-        <select id="currency" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+        <select id="currency" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
           ${CURRENCIES.map(c => `<option value="${c.code}" ${(settings.currency || DEFAULT_CURRENCY) === c.code ? "selected" : ""}>${c.label} - ${c.symbol}</option>`).join('')}
         </select>
         </div>
@@ -534,6 +538,33 @@ function renderSettingsView() {
         </div>
         </div>
 
+        <div class="card-bg rounded-xl shadow-md p-4">
+        <label class="block text-sm font-medium secondary-text mb-1">${t("settings.defaultWeightUnit")}</label>
+        <select id="default-weight-unit" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+           ${WEIGHT_UNITS.map(u => `<option value="${u.value}" ${(settings.defaultWeightUnit || DEFAULT_WEIGHT_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+        </select>
+        </div>
+
+        <div class="card-bg rounded-xl shadow-md p-4">
+        <label class="block text-sm font-medium secondary-text mb-1">${t("settings.defaultVolumeUnit")}</label>
+        <select id="default-volume-unit" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          ${VOLUME_UNITS.map(u => `<option value="${u.value}" ${(settings.defaultVolumeUnit || DEFAULT_VOLUME_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+        </select>
+        </div>
+
+        <div class="card-bg rounded-xl shadow-md p-4">
+        <label class="block text-sm font-medium secondary-text mb-1">${t("settings.defaultDimensionUnit")}</label>
+        <select id="default-dimension-unit" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          ${DIMENSION_UNITS.map(u => `<option value="${u.value}" ${(settings.defaultDimensionUnit || DEFAULT_DIMENSION_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+        </select>
+        </div>
+
+        <div class="card-bg rounded-xl shadow-md p-4">
+        <label class="block text-sm font-medium secondary-text mb-1">${t("settings.defaultDistanceUnit")}</label>
+        <select id="default-distance-unit" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          ${DISTANCE_UNITS.map(u => `<option value="${u.value}" ${(settings.defaultDistanceUnit || DEFAULT_DISTANCE_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+        </select>
+        </div>
 
       </div>
 
@@ -553,15 +584,25 @@ function renderSettingsView() {
       const darkMode = document.getElementById("dark-mode").checked
       const language = document.getElementById("language").value
       const currency = document.getElementById("currency").value
-
+      const defaultWeightUnit = document.getElementById("default-weight-unit").value
+      const defaultVolumeUnit = document.getElementById("default-volume-unit").value
+      const defaultDimensionUnit = document.getElementById("default-dimension-unit").value
+      const defaultDistanceUnit = document.getElementById("default-distance-unit").value
 
       browser.storage.local
         .set({
           darkMode,
           language,
           currency,
+          defaultWeightUnit,
+          defaultVolumeUnit,
+          defaultDimensionUnit,
+          defaultDistanceUnit
         })
         .then(async () => {
+          const c = CURRENCIES.find(curr => curr.code === currency)
+          if (c) currentCurrencySymbol = c.symbol
+          
           if (darkMode) {
             document.documentElement.classList.add("dark")
           } else {
@@ -581,46 +622,77 @@ function renderSettingsView() {
 
 function showNewSessionModal() {
   const modal = document.createElement("div")
-    modal.innerHTML = `
-      <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
-        <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
-          <h3 class="text-lg font-medium card-text mb-4">${t("sessions.newSession")}</h3>
-          <div class="mb-6">
-            <input 
-              type="text" 
-              id="session-name" 
-              placeholder="${t("sessions.enterSessionName")}" 
-              class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-            >
-          </div>
-          <div class="mb-6 flex items-center justify-between">
-            <label class="text-sm font-medium secondary-text">${t("sessions.manageQuantities")}</label>
-            <div class="flex items-center">
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" id="manage-quantities" class="sr-only peer">
-                <div class="toggle-switch"></div>
-              </label>
-            </div>
-          </div>
+  modal.innerHTML = `
+    <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
+      <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-medium card-text mb-4">${t("sessions.newSession")}</h3>
+        
+        <div class="mb-6">
+          <label for="session-name" class="block text-sm font-medium secondary-text mb-1">${t("sessions.sessionName")}</label>
+          <input 
+            type="text" 
+            id="session-name" 
+            placeholder="${t("sessions.enterSessionName")}" 
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+        </div>
 
-          <div class="mb-6 flex items-center justify-between">
-            <label class="text-sm font-medium secondary-text">${t("sessions.ImportFeesManagement")}</label>
-            <div class="flex items-center">
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" id="import-fees-management" class="sr-only peer">
-                <div class="toggle-switch"></div>
-              </label>
-            </div>
-          </div>
+        <div class="mb-6 flex items-center justify-between">
+          <label for="manage-quantity" class="text-sm font-medium secondary-text">${t("sessions.manageQuantities")}</label>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="manage-quantity" class="sr-only peer">
+            <div class="toggle-switch"></div>
+          </label>
+        </div>
 
-          <div class="flex justify-end space-x-4">
-            <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
-            <button id="save-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">
-              ${t("common.save")}
-            </button>
-          </div>
+        <div class="mb-6 flex items-center justify-between">
+          <label for="import-fees-enabled" class="text-sm font-medium secondary-text">${t("sessions.ImportFeesManagement")}</label>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="import-fees-enabled" class="sr-only peer">
+            <div class="toggle-switch"></div>
+          </label>
+        </div>
+
+        <div class="mb-6 flex items-center justify-between">
+          <label for="manage-weight" class="text-sm font-medium secondary-text">${t("sessions.manageWeight")}</label>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="manage-weight" class="sr-only peer">
+            <div class="toggle-switch"></div>
+          </label>
+        </div>
+
+        <div class="mb-6 flex items-center justify-between">
+          <label for="manage-volume" class="text-sm font-medium secondary-text">${t("sessions.manageVolume")}</label>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="manage-volume" class="sr-only peer">
+            <div class="toggle-switch"></div>
+          </label>
+        </div>
+
+        <div class="mb-6 flex items-center justify-between">
+          <label for="manage-dimension" class="text-sm font-medium secondary-text">${t("sessions.manageDimension")}</label>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="manage-dimension" class="sr-only peer">
+            <div class="toggle-switch"></div>
+          </label>
+        </div>
+
+        <div class="mb-6 flex items-center justify-between">
+          <label for="manage-distance" class="text-sm font-medium secondary-text">${t("sessions.manageDistance")}</label>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="manage-distance" class="sr-only peer">
+            <div class="toggle-switch"></div>
+          </label>
+        </div>
+
+        <div class="flex justify-end space-x-4">
+          <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
+          <button id="save-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">
+            ${t("common.save")}
+          </button>
         </div>
       </div>
+    </div>
   `
 
   document.body.appendChild(modal)
@@ -632,14 +704,18 @@ function showNewSessionModal() {
 
   const saveSession = () => {
     clearAllErrors(modal)
-    
+
     if (!validateRequiredField('session-name', t("sessions.sessionName"))) {
       return
     }
-    
+
     const name = document.getElementById("session-name").value.trim()
-    const manageQuantity = document.getElementById("manage-quantities").checked
-    const importFeesEnabled = document.getElementById("import-fees-management").checked
+    const manageQuantity = document.getElementById("manage-quantity").checked
+    const importFeesEnabled = document.getElementById("import-fees-enabled").checked
+    const manageWeight = document.getElementById("manage-weight").checked
+    const manageVolume = document.getElementById("manage-volume").checked
+    const manageDimension = document.getElementById("manage-dimension").checked
+    const manageDistance = document.getElementById("manage-distance").checked
     
     if (sessions.some(s => s.name === name)) {
       showFieldError('session-name', t("sessions.sessionExists"))
@@ -650,6 +726,10 @@ function showNewSessionModal() {
       name,
       manageQuantity,
       importFeesEnabled,
+      manageWeight,
+      manageVolume,
+      manageDimension,
+      manageDistance,
     }
 
     SidebarAPI.createSession(session).then((response) => {
@@ -677,52 +757,84 @@ function showNewSessionModal() {
     closeBtn.addEventListener('click', closeModal)
   }
 
-  document.querySelector("#modalOverlay").addEventListener("click", closeModal)
+  // Fallback listeners for safety
+  const overlay = modal.querySelector("#modalOverlay")
+  if (overlay) overlay.addEventListener("click", closeModal)
 
-  document.querySelector("#modalContent").addEventListener("click", (event) => {
-    event.stopPropagation()
-  })
+  const content = modal.querySelector("#modalContent")
+  if (content) content.addEventListener("click", (event) => event.stopPropagation())
 
-  document.getElementById("cancel-button").addEventListener("click", closeModal)
+  const cancelBtn = modal.querySelector("#cancel-button")
+  if (cancelBtn) cancelBtn.addEventListener("click", closeModal)
 
-  document.getElementById("save-button").addEventListener("click", saveSession)
+  const saveBtn = modal.querySelector("#save-button")
+  if (saveBtn) saveBtn.addEventListener("click", saveSession)
 }
 
 function showEditSessionModal(session) {
   const modal = document.createElement("div") 
   modal.innerHTML = `
-      <div id="modalOverlay" class="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+      <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
         <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
           <h3 class="text-lg font-medium card-text mb-4">${t("sessions.editSession")}</h3>
           <div class="mb-6">
+            <label for="edit-session-name" class="block text-sm font-medium secondary-text mb-1">${t("sessions.sessionName")}</label>
             <input 
               type="text" 
-              id="session-name" 
+              id="edit-session-name" 
               value="${session.name}"
-              class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+              class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
           </div>
 
           <div class="mb-6 flex items-center justify-between">
-            <label class="text-sm font-medium secondary-text">${t("sessions.manageQuantities")}</label>
-            <div class="flex items-center">
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" id="manage-quantities" class="sr-only peer" ${session.manageQuantity !== false ? "checked" : ""}>
-                <div class="toggle-switch"></div>
-              </label>
-            </div>
+            <label for="edit-manage-quantity" class="text-sm font-medium secondary-text">${t("sessions.manageQuantities")}</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="edit-manage-quantity" class="sr-only peer" ${session.manageQuantity !== false ? "checked" : ""}>
+              <div class="toggle-switch"></div>
+            </label>
           </div>
 
           <div class="mb-6 flex items-center justify-between">
-            <label class="text-sm font-medium secondary-text">${t("sessions.ImportFeesManagement")}</label>
-            <div class="flex items-center">
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" id="import-fees-management" class="sr-only peer" ${session.importFeesEnabled ? "checked" : ""}>
-                <div class="toggle-switch"></div>
-              </label>
-            </div>
+            <label for="edit-import-fees-enabled" class="text-sm font-medium secondary-text">${t("sessions.ImportFeesManagement")}</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="edit-import-fees-enabled" class="sr-only peer" ${session.importFeesEnabled ? "checked" : ""}>
+              <div class="toggle-switch"></div>
+            </label>
           </div>
-          
+
+          <div class="mb-6 flex items-center justify-between">
+            <label for="edit-manage-weight" class="text-sm font-medium secondary-text">${t("sessions.manageWeight")}</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="edit-manage-weight" class="sr-only peer" ${session.manageWeight ? "checked" : ""}>
+              <div class="toggle-switch"></div>
+            </label>
+          </div>
+
+          <div class="mb-6 flex items-center justify-between">
+            <label for="edit-manage-volume" class="text-sm font-medium secondary-text">${t("sessions.manageVolume")}</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="edit-manage-volume" class="sr-only peer" ${session.manageVolume ? "checked" : ""}>
+              <div class="toggle-switch"></div>
+            </label>
+          </div>
+
+          <div class="mb-6 flex items-center justify-between">
+            <label for="edit-manage-dimension" class="text-sm font-medium secondary-text">${t("sessions.manageDimension")}</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="edit-manage-dimension" class="sr-only peer" ${session.manageDimension ? "checked" : ""}>
+              <div class="toggle-switch"></div>
+            </label>
+          </div>
+
+          <div class="mb-6 flex items-center justify-between">
+            <label for="edit-manage-distance" class="text-sm font-medium secondary-text">${t("sessions.manageDistance")}</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="edit-manage-distance" class="sr-only peer" ${session.manageDistance ? "checked" : ""}>
+              <div class="toggle-switch"></div>
+            </label>
+          </div>
+
           <div class="flex justify-end space-x-4">
             <button id="cancel-button" class="px-4 py-2 secondary-text font-medium hover:secondary-bg cursor-pointer rounded">${t("common.cancel")}</button>
             <button id="save-button" class="px-4 py-2 primary-bg primary-text font-medium cursor-pointer rounded flex items-center">
@@ -742,20 +854,28 @@ function showEditSessionModal(session) {
 
   const saveSession = () => {
     clearAllErrors(modal)
-    
-    if (!validateRequiredField('session-name', t("sessions.sessionName"))) {
+
+    if (!validateRequiredField('edit-session-name', t("sessions.sessionName"))) {
       return
     }
-    
-    const name = modal.querySelector("#session-name").value.trim()
-    const manageQuantity = modal.querySelector("#manage-quantities").checked
-    const importFeesEnabled = modal.querySelector("#import-fees-management").checked
-    
+
+    const name = document.getElementById("edit-session-name").value.trim()
+    const manageQuantity = document.getElementById("edit-manage-quantity").checked
+    const importFeesEnabled = document.getElementById("edit-import-fees-enabled").checked
+    const manageWeight = document.getElementById("edit-manage-weight").checked
+    const manageVolume = document.getElementById("edit-manage-volume").checked
+    const manageDimension = document.getElementById("edit-manage-dimension").checked
+    const manageDistance = document.getElementById("edit-manage-distance").checked
+
     const updatedSession = { ...session }
-    
+
     updatedSession.name = name
     updatedSession.manageQuantity = manageQuantity
     updatedSession.importFeesEnabled = importFeesEnabled
+    updatedSession.manageWeight = manageWeight
+    updatedSession.manageVolume = manageVolume
+    updatedSession.manageDimension = manageDimension
+    updatedSession.manageDistance = manageDistance
 
     SidebarAPI.updateSession(session.id, updatedSession).then((response) => {
       sessions = response.sessions
@@ -836,7 +956,7 @@ function showNewProductModal() {
             type="text" 
             id="product-name" 
             placeholder="${t("modals.enterProductName")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -849,9 +969,90 @@ function showNewProductModal() {
             value="1"
             min="1"
             step="1"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
           <p class="mt-1 text-sm muted-text">${t("modals.howManyNeeded")}</p>
+        </div>
+        ` : ''}
+
+        ${session.manageWeight ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.weight")}</label>
+          <div class="flex space-x-2">
+            <input 
+              type="number" 
+              id="product-weight" 
+              placeholder="${t("attributes.weight")}"
+              step="0.01"
+              min="0"
+              class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+            <select id="product-weight-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+              ${WEIGHT_UNITS.map(u => `<option value="${u.value}">${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageVolume ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.volume")}</label>
+          <div id="product-volume-input" class="flex space-x-2">
+            <input
+              type="number"
+              id="product-volume-single"
+              placeholder="${t("attributes.volume")}"
+              step="0.01"
+              min="0"
+              class="flex-1 min-w-0 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+            <select id="product-volume-unit" class="max-w-[50%] px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary truncate">
+               ${VOLUME_UNITS.map(u => `<option value="${u.value}">${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageDimension ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.dimension")}</label>
+          <div class="mb-2">
+            <select id="product-dimension-unit" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+               ${DIMENSION_UNITS.map(u => `<option value="${u.value}">${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <input
+                type="number"
+                id="product-dim-length"
+                placeholder="${t("attributes.length")}"
+                step="0.01"
+                min="0"
+                class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+            </div>
+            <div>
+              <input
+                type="number"
+                id="product-dim-width"
+                placeholder="${t("attributes.width")}"
+                step="0.01"
+                min="0"
+                class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+            </div>
+            <div>
+              <input
+                type="number"
+                id="product-dim-height"
+                placeholder="${t("attributes.height")}"
+                step="0.01"
+                min="0"
+                class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+            </div>
+          </div>
         </div>
         ` : ''}
 
@@ -871,7 +1072,7 @@ function showNewProductModal() {
           <div id="compatible-products-list" class="mt-3 space-y-2" style="display:block; max-height:220px; overflow:auto;">
             ${sessions.find(s => s.id === currentSession).products.map(p => `
               <div class="flex items-center">
-                <input type="checkbox" id="compat-${p.id}" value="${p.id}" class="compat-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-gray-500">
+                <input type="checkbox" id="compat-${p.id}" value="${p.id}" class="compat-checkbox h-4 w-4 accent-primary border-default rounded focus:ring-primary">
                 <label for="compat-${p.id}" class="ml-2 text-sm secondary-text">${p.name}</label>
               </div>
             `).join('')}
@@ -889,6 +1090,24 @@ function showNewProductModal() {
   `
 
   document.body.appendChild(modal)
+
+  // Initialize default units
+  browser.storage.local.get(["defaultWeightUnit", "defaultVolumeUnit", "defaultDimensionUnit"]).then((res) => {
+      const weightUnitSelect = document.getElementById("product-weight-unit")
+      if (weightUnitSelect) {
+          weightUnitSelect.value = res.defaultWeightUnit || DEFAULT_WEIGHT_UNIT
+      }
+
+      const volumeUnitSelect = document.getElementById("product-volume-unit")
+      if (volumeUnitSelect) {
+          volumeUnitSelect.value = res.defaultVolumeUnit || DEFAULT_VOLUME_UNIT
+      }
+
+      const dimensionUnitSelect = document.getElementById("product-dimension-unit")
+      if (dimensionUnitSelect) {
+          dimensionUnitSelect.value = res.defaultDimensionUnit || DEFAULT_DIMENSION_UNIT
+      }
+  })
 
   const toggleBtn = document.getElementById('toggle-compatibility')
   const compatSection = document.getElementById('limited-compatibility-section')
@@ -914,16 +1133,43 @@ function showNewProductModal() {
     document.body.removeChild(modal)
   }
 
-  const saveProduct = () => {
+  const saveNewProduct = () => {
     clearAllErrors(modal)
-    
+
     if (!validateRequiredField('product-name', t("products.productName"))) {
       return
     }
-    
+
     const name = document.getElementById("product-name").value.trim()
     const quantityInput = document.getElementById("product-quantity")
     const quantity = quantityInput ? (parseInt(quantityInput.value) || 1) : 1
+
+    const weightInput = document.getElementById("product-weight")
+    const weight = weightInput ? (parseFloat(weightInput.value) || null) : null
+    const weightUnit = document.getElementById("product-weight-unit")?.value || null
+
+    const volumeUnitSelect = document.getElementById("product-volume-unit")
+    const volumeUnit = volumeUnitSelect?.value || null
+    const volInput = document.getElementById("product-volume-single")
+    const volume = volInput ? (parseFloat(volInput.value) || null) : null
+
+    // Collect dimension values (separate from volume)
+    const dimensionUnitSelect = document.getElementById("product-dimension-unit")
+    const dimensionUnit = dimensionUnitSelect?.value || null
+    let length = null
+    let width = null
+    let height = null
+
+    if (dimensionUnit) {
+        const lengthInput = document.getElementById("product-dim-length")
+        length = lengthInput ? (parseFloat(lengthInput.value) || null) : null
+
+        const widthInput = document.getElementById("product-dim-width")
+        width = widthInput ? (parseFloat(widthInput.value) || null) : null
+
+        const heightInput = document.getElementById("product-dim-height")
+        height = heightInput ? (parseFloat(heightInput.value) || null) : null
+    }
 
     const compatibleProducts = []
     document.querySelectorAll('#compatible-products-list input.compat-checkbox:checked').forEach(cb => compatibleProducts.push(cb.value))
@@ -931,6 +1177,14 @@ function showNewProductModal() {
     SidebarAPI.createProduct(currentSession, {
       name,
       quantity,
+      weight,
+      weightUnit,
+      volume,
+      volumeUnit,
+      length,
+      width,
+      height,
+      dimensionUnit,
       limitedCompatibilityWith: compatibleProducts,
     }).then((response) => {
         sessions = response.sessions
@@ -963,7 +1217,7 @@ function showNewProductModal() {
 
   setupAutoFocus(modal)
   setupEscapeKey(modal, closeModal)
-  setupEnterKey(modal, saveProduct)
+  setupEnterKey(modal, saveNewProduct)
 
   const overlayEl = document.getElementById('modalOverlay')
   const contentEl = document.getElementById('modalContent')
@@ -987,7 +1241,7 @@ function showNewProductModal() {
 
   document.getElementById("cancel-button").addEventListener("click", closeModal)
 
-  document.getElementById("save-button").addEventListener("click", saveProduct)
+  document.getElementById("save-button").addEventListener("click", saveNewProduct)
 }
 
 function showEditProductModal(product) {
@@ -1005,7 +1259,7 @@ function showEditProductModal(product) {
             type="text" 
             id="product-name" 
             value="${product.name}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1018,9 +1272,55 @@ function showEditProductModal(product) {
             value="${product.quantity || 1}"
             min="1"
             step="1"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
           <p class="mt-1 text-sm muted-text">${t("modals.howManyNeeded")}</p>
+        </div>
+        ` : ''}
+
+        ${session.manageWeight ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.weight")}</label>
+          <div class="flex space-x-2">
+            <input 
+              type="number" 
+              id="product-weight" 
+              placeholder="${t("attributes.weight")}"
+              value="${product.weight || ''}"
+              step="0.01"
+              min="0"
+              class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+            <select id="product-weight-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+              ${WEIGHT_UNITS.map(u => `<option value="${u.value}" ${product.weightUnit === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageVolume ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.volume")}</label>
+          <div id="product-volume-input" class="flex space-x-2">
+            <input type="number" id="product-volume-single" value="${product.volume || ''}" placeholder="${t("attributes.volume")}" step="0.01" min="0" class="flex-1 min-w-0 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <select id="product-volume-unit" class="max-w-[50%] px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary truncate">
+               ${VOLUME_UNITS.map(u => `<option value="${u.value}" ${product.volumeUnit === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageDimension ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.dimension")}</label>
+          <select id="product-dimension-unit" class="w-full px-4 py-2 mb-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+             ${DIMENSION_UNITS.map(u => `<option value="${u.value}" ${product.dimensionUnit === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+          </select>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="number" id="product-dim-length" value="${product.length || ''}" placeholder="${t("attributes.length")}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <input type="number" id="product-dim-width" value="${product.width || ''}" placeholder="${t("attributes.width")}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <input type="number" id="product-dim-height" value="${product.height || ''}" placeholder="${t("attributes.height")}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
         </div>
         ` : ''}
 
@@ -1049,7 +1349,7 @@ function showEditProductModal(product) {
           <div id="compatible-products-list" class="mt-3 space-y-2" style="max-height:220px; overflow:auto;">
             ${sessions.find(s => s.id === currentSession).products.filter(p => p.id !== product.id).map(p => `
               <div class="flex items-center">
-                <input type="checkbox" id="compat-${p.id}" value="${p.id}" class="compat-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-gray-500" ${product.limitedCompatibilityWith && product.limitedCompatibilityWith.includes(p.id) ? 'checked' : ''}>
+                <input type="checkbox" id="compat-${p.id}" value="${p.id}" class="compat-checkbox h-4 w-4 accent-primary border-default rounded focus:ring-primary" ${product.limitedCompatibilityWith && product.limitedCompatibilityWith.includes(p.id) ? 'checked' : ''}>
                 <label for="compat-${p.id}" class="ml-2 text-sm secondary-text">${p.name}</label>
               </div>
             `).join('')}
@@ -1067,6 +1367,28 @@ function showEditProductModal(product) {
   `
 
   document.body.appendChild(modal)
+
+  // Initialize defaults if not set
+  if (!product.weightUnit) {
+      browser.storage.local.get("defaultWeightUnit").then(res => {
+           const weightUnitSelect = document.getElementById("product-weight-unit")
+           if (weightUnitSelect) weightUnitSelect.value = res.defaultWeightUnit || DEFAULT_WEIGHT_UNIT
+      })
+  }
+
+  if (!product.volumeUnit) {
+      browser.storage.local.get("defaultVolumeUnit").then(res => {
+           const volumeUnitSelect = document.getElementById("product-volume-unit")
+           if (volumeUnitSelect) volumeUnitSelect.value = res.defaultVolumeUnit || DEFAULT_VOLUME_UNIT
+      })
+  }
+
+  if (!product.dimensionUnit) {
+      browser.storage.local.get("defaultDimensionUnit").then(res => {
+           const dimensionUnitSelect = document.getElementById("product-dimension-unit")
+           if (dimensionUnitSelect) dimensionUnitSelect.value = res.defaultDimensionUnit || DEFAULT_DIMENSION_UNIT
+      })
+  }
 
   const toggleBtn = document.getElementById('toggle-compatibility')
   const compatSection = document.getElementById('limited-compatibility-section')
@@ -1122,10 +1444,45 @@ function showEditProductModal(product) {
 
     const session = sessions.find(s => s.id === currentSession)
 
+    const weightInput = document.getElementById("product-weight")
+    const weight = weightInput ? (parseFloat(weightInput.value) || null) : null
+    const weightUnit = document.getElementById("product-weight-unit")?.value || null
+
+    const volumeUnitSelect = document.getElementById("product-volume-unit")
+    const volumeUnit = volumeUnitSelect?.value || null
+    const volInput = document.getElementById("product-volume-single")
+    const volume = volInput ? (parseFloat(volInput.value) || null) : null
+
+    // Collect dimension values (separate from volume)
+    const dimensionUnitSelect = document.getElementById("product-dimension-unit")
+    const dimensionUnit = dimensionUnitSelect?.value || null
+    let length = null
+    let width = null
+    let height = null
+
+    if (dimensionUnit) {
+        const lengthInput = document.getElementById("product-dim-length")
+        length = lengthInput ? (parseFloat(lengthInput.value) || null) : null
+
+        const widthInput = document.getElementById("product-dim-width")
+        width = widthInput ? (parseFloat(widthInput.value) || null) : null
+
+        const heightInput = document.getElementById("product-dim-height")
+        height = heightInput ? (parseFloat(heightInput.value) || null) : null
+    }
+
     const prod = session.products.find(p => p.id === product.id)
     if (!prod) return
     prod.name = name
     prod.quantity = quantity
+    prod.weight = weight
+    prod.weightUnit = weightUnit
+    prod.volume = volume
+    prod.volumeUnit = volumeUnit
+    prod.length = length
+    prod.width = width
+    prod.height = height
+    prod.dimensionUnit = dimensionUnit
     prod.limitedCompatibilityWith = compatibleProducts
 
     // Ensure bidirectional links: for each product in session, add/remove reciprocal
@@ -1165,6 +1522,7 @@ function showEditProductModal(product) {
 
 function showEditPageModal(page) {
   const session = sessions.find(s => s.id === currentSession)
+  const product = session.products.find(p => p.id === currentProduct)
   const modal = document.createElement("div")
   modal.className = "modal"
   modal.innerHTML = `
@@ -1179,7 +1537,7 @@ function showEditPageModal(page) {
             id="page-url" 
             value="${page.url}" 
             readonly
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1190,7 +1548,7 @@ function showEditPageModal(page) {
             id="page-price" 
             value="${page.price || ""}"
             placeholder="${t("modals.enterPrice")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1201,7 +1559,7 @@ function showEditPageModal(page) {
             id="page-shipping" 
             value="${page.shippingPrice || ""}"
             placeholder="${t("modals.enterShipping")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1212,7 +1570,7 @@ function showEditPageModal(page) {
             id="page-insurance" 
             value="${page.insurancePrice || ""}"
             placeholder="${t("modals.enterInsurance")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1220,7 +1578,7 @@ function showEditPageModal(page) {
           <label for="page-currency" class="block text-sm font-medium secondary-text mb-1">${t("modals.currency")}</label>
           <select 
             id="page-currency" 
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="FREE" ${page.currency === "FREE" ? "selected" : ""}>${t("pages.free")}</option>
             ${CURRENCIES.map(c => `<option value="${c.code}" ${page.currency === c.code ? "selected" : ""}>${c.label} - ${c.symbol}</option>`).join('')}
@@ -1234,7 +1592,7 @@ function showEditPageModal(page) {
             id="page-seller" 
             value="${page.seller || ""}"
             placeholder="${t("modals.enterSeller")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1246,7 +1604,7 @@ function showEditPageModal(page) {
           </div>
           <select 
             id="customs-category" 
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">${t("modals.noCustomsDuties")}</option>
             ${(session.customsCategories || []).map(cat => `<option value="${cat.id}" ${page.customsCategoryId === cat.id ? 'selected' : ''}>${cat.name}</option>`).join('')}
@@ -1263,7 +1621,7 @@ function showEditPageModal(page) {
             value="${page.itemsPerPurchase || 1}"
             min="1"
             step="1"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
           <p class="mt-1 text-sm muted-text">${t("modals.itemsPerPurchaseHelp")}</p>
         </div>
@@ -1277,9 +1635,74 @@ function showEditPageModal(page) {
             min="1"
             step="1"
             placeholder="${t("modals.leaveEmptyIfUnlimited")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
           <p class="mt-1 text-sm muted-text">${t("modals.maxPerPurchaseHelp")}</p>
+        </div>
+        ` : ''}
+
+        ${session.manageWeight ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.weight")}</label>
+          <div class="flex space-x-2">
+            <input
+              type="number"
+              id="page-weight"
+              value="${page.weight || ''}"
+              placeholder="${product.weight ? product.weight + ' ' + (product.weightUnit || '') : ''}"
+              step="0.01"
+              min="0"
+              class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+            <select id="page-weight-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+              ${WEIGHT_UNITS.map(u => `<option value="${u.value}" ${(page.weightUnit || product.weightUnit || DEFAULT_WEIGHT_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageVolume ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.volume")}</label>
+          <div id="page-volume-input" class="flex space-x-2">
+            <input type="number" id="page-volume-single" value="${page.volume || ''}" placeholder="${product.volume ? product.volume + ' ' + (product.volumeUnit || '') : ''}" step="0.01" min="0" class="flex-1 min-w-0 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <select id="page-volume-unit" class="max-w-[50%] px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary truncate">
+               ${VOLUME_UNITS.map(u => `<option value="${u.value}" ${(page.volumeUnit || product.volumeUnit || DEFAULT_VOLUME_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageDimension ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.dimension")}</label>
+          <select id="page-dimension-unit" class="w-full px-4 py-2 mb-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+             ${DIMENSION_UNITS.map(u => `<option value="${u.value}" ${(page.dimensionUnit || product.dimensionUnit || DEFAULT_DIMENSION_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+          </select>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="number" id="page-dim-length" value="${page.length || ''}" placeholder="${product.length ? product.length + ' ' + (product.dimensionUnit || '') : ''}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <input type="number" id="page-dim-width" value="${page.width || ''}" placeholder="${product.width ? product.width + ' ' + (product.dimensionUnit || '') : ''}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <input type="number" id="page-dim-height" value="${page.height || ''}" placeholder="${product.height ? product.height + ' ' + (product.dimensionUnit || '') : ''}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageDistance ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.distance")}</label>
+          <div class="flex space-x-2">
+            <input
+              type="number"
+              id="page-distance"
+              value="${page.distance || ''}"
+              step="0.01"
+              min="0"
+              class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+            <select id="page-distance-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+              ${DISTANCE_UNITS.map(u => `<option value="${u.value}" ${(page.distanceUnit || DEFAULT_DISTANCE_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
         </div>
         ` : ''}
 
@@ -1294,6 +1717,35 @@ function showEditPageModal(page) {
   `
 
   document.body.appendChild(modal)
+
+  // Initialize defaults if not set
+  if (!page.weightUnit) {
+      browser.storage.local.get("defaultWeightUnit").then(res => {
+           const weightUnitSelect = document.getElementById("page-weight-unit")
+           if (weightUnitSelect) weightUnitSelect.value = res.defaultWeightUnit || DEFAULT_WEIGHT_UNIT
+      })
+  }
+
+  if (!page.volumeUnit) {
+      browser.storage.local.get("defaultVolumeUnit").then(res => {
+           const volumeUnitSelect = document.getElementById("page-volume-unit")
+           if (volumeUnitSelect) volumeUnitSelect.value = res.defaultVolumeUnit || DEFAULT_VOLUME_UNIT
+      })
+  }
+
+  if (!page.dimensionUnit) {
+      browser.storage.local.get("defaultDimensionUnit").then(res => {
+           const dimensionUnitSelect = document.getElementById("page-dimension-unit")
+           if (dimensionUnitSelect) dimensionUnitSelect.value = res.defaultDimensionUnit || DEFAULT_DIMENSION_UNIT
+      })
+  }
+
+  if (!page.distanceUnit) {
+      browser.storage.local.get("defaultDistanceUnit").then(res => {
+           const distanceUnitSelect = document.getElementById("page-distance-unit")
+           if (distanceUnitSelect) distanceUnitSelect.value = res.defaultDistanceUnit || DEFAULT_DISTANCE_UNIT
+      })
+  }
 
   const closeModal = () => {
     clearAllErrors(modal)
@@ -1340,6 +1792,36 @@ function showEditPageModal(page) {
     
     if (!isValid) return
 
+    const weightInput = document.getElementById("page-weight")
+    const weight = weightInput ? (parseFloat(weightInput.value) || null) : null
+    const weightUnit = document.getElementById("page-weight-unit")?.value || null
+
+    const volumeUnitSelectSave = document.getElementById("page-volume-unit")
+    const volumeUnit = volumeUnitSelectSave?.value || null
+    const volInput = document.getElementById("page-volume-single")
+    const volume = volInput ? (parseFloat(volInput.value) || null) : null
+
+    const dimensionUnitSelect = document.getElementById("page-dimension-unit")
+    const dimensionUnit = dimensionUnitSelect?.value || null
+    let length = null
+    let width = null
+    let height = null
+
+    if (dimensionUnit) {
+        const lengthInput = document.getElementById("page-dim-length")
+        length = lengthInput ? (parseFloat(lengthInput.value) || null) : null
+
+        const widthInput = document.getElementById("page-dim-width")
+        width = widthInput ? (parseFloat(widthInput.value) || null) : null
+
+        const heightInput = document.getElementById("page-dim-height")
+        height = heightInput ? (parseFloat(heightInput.value) || null) : null
+    }
+
+    const distanceInput = document.getElementById("page-distance")
+    const distance = distanceInput ? (parseFloat(distanceInput.value) || null) : null
+    const distanceUnit = document.getElementById("page-distance-unit")?.value || null
+
     const updatedPage = {
       price,
       shippingPrice,
@@ -1349,6 +1831,16 @@ function showEditPageModal(page) {
       itemsPerPurchase,
       ...(maxPerPurchase !== null && { maxPerPurchase }),
       ...(customsCategoryId && { customsCategoryId }),
+      ...(weight !== null && { weight }),
+      ...(weightUnit && { weightUnit }),
+      ...(volume !== null && { volume }),
+      ...(volumeUnit && { volumeUnit }),
+      ...(length !== null && { length }),
+      ...(width !== null && { width }),
+      ...(height !== null && { height }),
+      ...(dimensionUnit && { dimensionUnit }),
+      ...(distance !== null && { distance }),
+      ...(distanceUnit && { distanceUnit }),
     }
 
     SidebarAPI.updatePage(currentSession, currentProduct, page.id, updatedPage).then((response) => {
@@ -1387,7 +1879,7 @@ function showEditBundleModal(bundle) {
             id="page-url" 
             value="${bundle.url}" 
             readonly
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1407,7 +1899,7 @@ function showEditBundleModal(bundle) {
                   id="product-${p.id}" 
                   value="${p.id}" 
                   ${isChecked ? "checked" : ""}
-                  class="bundle-edit-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                  class="bundle-edit-checkbox h-4 w-4 accent-primary border-default rounded focus:ring-2 focus:ring-primary"
                 >
                 <label for="product-${p.id}" class="flex-1 text-sm secondary-text">${p.name}</label>
                 ${session.manageQuantity !== false ? `
@@ -1435,7 +1927,7 @@ function showEditBundleModal(bundle) {
             id="page-price" 
             value="${bundle.price || ""}"
             placeholder="${t("modals.enterPrice")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1446,7 +1938,7 @@ function showEditBundleModal(bundle) {
             id="page-shipping" 
             value="${bundle.shippingPrice || ""}"
             placeholder="${t("modals.enterShipping")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1457,7 +1949,7 @@ function showEditBundleModal(bundle) {
             id="page-insurance" 
             value="${bundle.insurancePrice || ""}"
             placeholder="${t("modals.enterInsurance")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1465,7 +1957,7 @@ function showEditBundleModal(bundle) {
           <label for="page-currency" class="block text-sm font-medium secondary-text mb-1">${t("pages.currency")}</label>
           <select 
             id="page-currency" 
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="FREE" ${bundle.currency === "FREE" ? "selected" : ""}>${t("pages.free")}</option>
             ${CURRENCIES.map(c => `<option value="${c.code}" ${bundle.currency === c.code ? "selected" : ""}>${c.label} - ${c.symbol}</option>`).join('')}
@@ -1479,7 +1971,7 @@ function showEditBundleModal(bundle) {
             id="page-seller" 
             value="${bundle.seller || ""}"
             placeholder="${t("modals.enterSeller")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1491,7 +1983,7 @@ function showEditBundleModal(bundle) {
           </div>
           <select 
             id="customs-category" 
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">${t("modals.noCustomsDuties")}</option>
             ${(session.customsCategories || []).map(cat => `<option value="${cat.id}" ${bundle.customsCategoryId === cat.id ? 'selected' : ''}>${cat.name}</option>`).join('')}
@@ -1508,7 +2000,7 @@ function showEditBundleModal(bundle) {
             value="${bundle.itemsPerPurchase || 1}"
             min="1"
             step="1"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
           <p class="mt-1 text-sm muted-text">${t("modals.itemsPerPurchaseHelp")}</p>
         </div>
@@ -1522,9 +2014,73 @@ function showEditBundleModal(bundle) {
             min="1"
             step="1"
             placeholder="${t("modals.leaveEmptyIfUnlimited")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
           <p class="mt-1 text-sm muted-text">${t("modals.maxPerPurchaseHelpBundle")}</p>
+        </div>
+        ` : ''}
+
+        ${session.manageWeight ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.weight")}</label>
+          <div class="flex space-x-2">
+            <input 
+              type="number" 
+              id="page-weight" 
+              value="${bundle.weight || ''}"
+              step="0.01"
+              min="0"
+              class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+            <select id="page-weight-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+              ${WEIGHT_UNITS.map(u => `<option value="${u.value}" ${(bundle.weightUnit || DEFAULT_WEIGHT_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageVolume ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.volume")}</label>
+          <div id="page-volume-input" class="flex space-x-2">
+            <input type="number" id="page-volume-single" value="${bundle.volume || ''}" placeholder="${t("attributes.volume")}" step="0.01" min="0" class="flex-1 min-w-0 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <select id="page-volume-unit" class="max-w-[50%] px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary truncate">
+               ${VOLUME_UNITS.map(u => `<option value="${u.value}" ${(bundle.volumeUnit || DEFAULT_VOLUME_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageDimension ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.dimension")}</label>
+          <select id="page-dimension-unit" class="w-full px-4 py-2 mb-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+             ${DIMENSION_UNITS.map(u => `<option value="${u.value}" ${(bundle.dimensionUnit || DEFAULT_DIMENSION_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+          </select>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="number" id="page-dim-length" value="${bundle.length || ''}" placeholder="${t("attributes.length")}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <input type="number" id="page-dim-width" value="${bundle.width || ''}" placeholder="${t("attributes.width")}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <input type="number" id="page-dim-height" value="${bundle.height || ''}" placeholder="${t("attributes.height")}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageDistance ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.distance")}</label>
+          <div class="flex space-x-2">
+            <input
+              type="number"
+              id="page-distance"
+              value="${bundle.distance || ''}"
+              step="0.01"
+              min="0"
+              class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+            <select id="page-distance-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+              ${DISTANCE_UNITS.map(u => `<option value="${u.value}" ${(bundle.distanceUnit || DEFAULT_DISTANCE_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
         </div>
         ` : ''}
 
@@ -1539,6 +2095,35 @@ function showEditBundleModal(bundle) {
   `
 
   document.body.appendChild(modal)
+
+  // Initialize defaults if not set
+  if (!bundle.weightUnit) {
+      browser.storage.local.get("defaultWeightUnit").then(res => {
+           const weightUnitSelect = document.getElementById("page-weight-unit")
+           if (weightUnitSelect) weightUnitSelect.value = res.defaultWeightUnit || DEFAULT_WEIGHT_UNIT
+      })
+  }
+
+  if (!bundle.volumeUnit) {
+      browser.storage.local.get("defaultVolumeUnit").then(res => {
+           const volumeUnitSelect = document.getElementById("page-volume-unit")
+           if (volumeUnitSelect) volumeUnitSelect.value = res.defaultVolumeUnit || DEFAULT_VOLUME_UNIT
+      })
+  }
+
+  if (!bundle.dimensionUnit) {
+      browser.storage.local.get("defaultDimensionUnit").then(res => {
+           const dimensionUnitSelect = document.getElementById("page-dimension-unit")
+           if (dimensionUnitSelect) dimensionUnitSelect.value = res.defaultDimensionUnit || DEFAULT_DIMENSION_UNIT
+      })
+  }
+
+  if (!bundle.distanceUnit) {
+      browser.storage.local.get("defaultDistanceUnit").then(res => {
+           const distanceUnitSelect = document.getElementById("page-distance-unit")
+           if (distanceUnitSelect) distanceUnitSelect.value = res.defaultDistanceUnit || DEFAULT_DISTANCE_UNIT
+      })
+  }
 
   document.querySelectorAll('.bundle-edit-checkbox').forEach(checkbox => {
     checkbox.addEventListener('change', (e) => {
@@ -1569,7 +2154,39 @@ function showEditBundleModal(bundle) {
     const maxPerPurchase = maxPerPurchaseValue ? parseInt(maxPerPurchaseValue) : null
     const customsCategoryElement = document.getElementById("customs-category")
     const customsCategoryId = customsCategoryElement ? (customsCategoryElement.value || null) : null
-    
+
+    const weightInput = document.getElementById("page-weight")
+    const weight = weightInput ? (parseFloat(weightInput.value) || null) : null
+    const weightUnit = document.getElementById("page-weight-unit")?.value || null
+
+    const volumeUnitSelectSave = document.getElementById("page-volume-unit")
+    const volumeUnit = volumeUnitSelectSave?.value || null
+    const volInput = document.getElementById("page-volume-single")
+    const volume = volInput ? (parseFloat(volInput.value) || null) : null
+
+    // Collect dimension values (separate from volume)
+    const dimensionUnitSelect = document.getElementById("page-dimension-unit")
+    const dimensionUnit = dimensionUnitSelect?.value || null
+    let length = null
+    let width = null
+    let height = null
+
+    if (dimensionUnit) {
+        const lengthInput = document.getElementById("page-dim-length")
+        length = lengthInput ? (parseFloat(lengthInput.value) || null) : null
+
+        const widthInput = document.getElementById("page-dim-width")
+        width = widthInput ? (parseFloat(widthInput.value) || null) : null
+
+        const heightInput = document.getElementById("page-dim-height")
+        height = heightInput ? (parseFloat(heightInput.value) || null) : null
+    }
+
+    // Collect distance value
+    const distanceInput = document.getElementById("page-distance")
+    const distance = distanceInput ? (parseFloat(distanceInput.value) || null) : null
+    const distanceUnit = document.getElementById("page-distance-unit")?.value || null
+
     let isValid = true
     if (currency !== 'FREE') {
       if (!validateRequiredField('page-price', t("pages.price"))) isValid = false
@@ -1577,7 +2194,7 @@ function showEditBundleModal(bundle) {
       if (!validateRequiredField('page-insurance', t("modals.insurancePrice"))) isValid = false
     }
     if (!validateRequiredField('page-seller', t("pages.seller"))) isValid = false
-    
+
     if (session.manageQuantity !== false) {
       if (!itemsPerPurchaseValue) {
         showFieldError('items-per-purchase', t("modals.itemsPerPurchaseRequired"))
@@ -1592,7 +2209,7 @@ function showEditBundleModal(bundle) {
         isValid = false
       }
     }
-    
+
     if (!isValid) return
 
     const products = []
@@ -1613,6 +2230,16 @@ function showEditBundleModal(bundle) {
       itemsPerPurchase,
       ...(maxPerPurchase !== null && { maxPerPurchase }),
       ...(customsCategoryId && { customsCategoryId }),
+      ...(weight !== null && { weight }),
+      ...(weightUnit && { weightUnit }),
+      ...(volume !== null && { volume }),
+      ...(volumeUnit && { volumeUnit }),
+      ...(length !== null && { length }),
+      ...(width !== null && { width }),
+      ...(height !== null && { height }),
+      ...(dimensionUnit && { dimensionUnit }),
+      ...(distance !== null && { distance }),
+      ...(distanceUnit && { distanceUnit }),
     }
 
     SidebarAPI.updateBundle(currentSession, bundle.id, updatedBundle).then((response) => {
@@ -1803,7 +2430,7 @@ function showScrapedDataModal() {
                   id="product-${p.id}" 
                   value="${p.id}" 
                   ${p.id === product.id ? "checked disabled" : ""}
-                  class="bundle-product-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-gray-500"
+                  class="bundle-product-checkbox h-4 w-4 accent-primary border-default rounded focus:ring-primary"
                 >
                 <label for="product-${p.id}" class="flex-1 text-sm secondary-text">${p.name}</label>
                 ${session.manageQuantity !== false ? `
@@ -1830,7 +2457,7 @@ function showScrapedDataModal() {
             id="page-url" 
             value="${scrapedData.url}" 
             readonly
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1841,7 +2468,7 @@ function showScrapedDataModal() {
             id="page-price" 
             value="${scrapedData.hasKnownParser ? (scrapedData.price || "") : ""}"
             placeholder="${t("modals.enterPrice")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1852,7 +2479,7 @@ function showScrapedDataModal() {
             id="page-shipping" 
             value="${scrapedData.hasKnownParser ? (scrapedData.shippingPrice || "") : ""}"
             placeholder="${t("modals.enterShipping")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1863,7 +2490,7 @@ function showScrapedDataModal() {
             id="page-insurance" 
             value="${scrapedData.hasKnownParser ? (scrapedData.insurancePrice || "") : ""}"
             placeholder="${t("modals.enterInsurance")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1871,7 +2498,7 @@ function showScrapedDataModal() {
           <label for="page-currency" class="block text-sm font-medium secondary-text mb-1">${t("modals.currency")}</label>
           <select 
             id="page-currency" 
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="FREE" ${scrapedData.priceCurrency === "FREE" ? "selected" : ""}>${t("pages.free")}</option>
             ${CURRENCIES.map(c => `<option value="${c.code}" ${scrapedData.priceCurrency === c.code ? "selected" : ""}>${c.label} - ${c.symbol}</option>`).join('')}
@@ -1885,7 +2512,7 @@ function showScrapedDataModal() {
             id="page-seller" 
             value="${scrapedData.hasKnownParser ? (scrapedData.seller || "") : ""}"
             placeholder="${t("modals.enterSeller")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -1897,7 +2524,7 @@ function showScrapedDataModal() {
           </div>
           <select 
             id="customs-category" 
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">${t("modals.noCustomsDuties")}</option>
             ${(session.customsCategories || []).map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('')}
@@ -1914,7 +2541,7 @@ function showScrapedDataModal() {
             value="1"
             min="1"
             step="1"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
           <p class="mt-1 text-sm muted-text">${t("modals.itemsPerPurchaseHelp")}</p>
         </div>
@@ -1928,9 +2555,67 @@ function showScrapedDataModal() {
             min="1"
             step="1"
             placeholder="${t("modals.leaveEmptyIfUnlimited")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
           <p class="mt-1 text-sm muted-text">${t("modals.maxPerPurchaseHelp")}</p>
+        </div>
+        ` : ''}
+
+        ${session.manageWeight ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.weight")}</label>
+          <div class="flex space-x-2">
+            <input
+              type="number"
+              id="page-weight"
+              value=""
+              placeholder="${product.weight ? product.weight + ' ' + (product.weightUnit || '') : ''}"
+              step="0.01"
+              min="0"
+              class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+            <select id="page-weight-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+              ${WEIGHT_UNITS.map(u => `<option value="${u.value}" ${(product.weightUnit || DEFAULT_WEIGHT_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageVolume ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.volume")}</label>
+          <div id="page-volume-input" class="flex space-x-2">
+            <input type="number" id="page-volume-single" value="" placeholder="${product.volume ? product.volume + ' ' + (product.volumeUnit || '') : ''}" step="0.01" min="0" class="flex-1 min-w-0 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <select id="page-volume-unit" class="max-w-[50%] px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary truncate">
+               ${VOLUME_UNITS.map(u => `<option value="${u.value}" ${(product.volumeUnit || DEFAULT_VOLUME_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageDimension ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.dimension")}</label>
+          <select id="page-dimension-unit" class="w-full px-4 py-2 mb-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+             ${DIMENSION_UNITS.map(u => `<option value="${u.value}" ${(product.dimensionUnit || DEFAULT_DIMENSION_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+          </select>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="number" id="page-dim-length" value="" placeholder="${product.length ? product.length + ' ' + (product.dimensionUnit || '') : ''}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <input type="number" id="page-dim-width" value="" placeholder="${product.width ? product.width + ' ' + (product.dimensionUnit || '') : ''}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <input type="number" id="page-dim-height" value="" placeholder="${product.height ? product.height + ' ' + (product.dimensionUnit || '') : ''}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+        </div>
+        ` : ''}
+
+        ${session.manageDistance ? `
+        <div class="mb-6">
+          <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.distance")}</label>
+          <div class="flex space-x-2">
+            <input type="number" id="page-distance" value="" step="0.01" min="0" class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <select id="page-distance-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+              ${DISTANCE_UNITS.map(u => `<option value="${u.value}" ${DEFAULT_DISTANCE_UNIT === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+          </div>
         </div>
         ` : ''}
 
@@ -1945,6 +2630,29 @@ function showScrapedDataModal() {
   `
 
   document.body.appendChild(modal)
+
+  // Initialize defaults
+  browser.storage.local.get(["defaultWeightUnit", "defaultVolumeUnit", "defaultDimensionUnit", "defaultDistanceUnit"]).then((res) => {
+      const weightUnitSelect = document.getElementById("page-weight-unit")
+      if (weightUnitSelect) {
+          weightUnitSelect.value = res.defaultWeightUnit || DEFAULT_WEIGHT_UNIT
+      }
+
+      const volumeUnitSelect = document.getElementById("page-volume-unit")
+      if (volumeUnitSelect) {
+          volumeUnitSelect.value = res.defaultVolumeUnit || DEFAULT_VOLUME_UNIT
+      }
+
+      const dimensionUnitSelect = document.getElementById("page-dimension-unit")
+      if (dimensionUnitSelect) {
+          dimensionUnitSelect.value = res.defaultDimensionUnit || DEFAULT_DIMENSION_UNIT
+      }
+
+      const distanceUnitSelect = document.getElementById("page-distance-unit")
+      if (distanceUnitSelect) {
+          distanceUnitSelect.value = res.defaultDistanceUnit || DEFAULT_DISTANCE_UNIT
+      }
+  })
 
   document.getElementById("is-bundle").addEventListener("change", (e) => {
     const productSelection = document.getElementById("product-selection")
@@ -1989,6 +2697,36 @@ function showScrapedDataModal() {
     const customsCategoryElement = document.getElementById("customs-category")
     const customsCategoryId = customsCategoryElement ? (customsCategoryElement.value || null) : null
 
+    const weightInput = document.getElementById("page-weight")
+    const weight = weightInput ? (parseFloat(weightInput.value) || null) : null
+    const weightUnit = document.getElementById("page-weight-unit")?.value || null
+
+    const volumeUnitSelectSave = document.getElementById("page-volume-unit")
+    const volumeUnit = volumeUnitSelectSave?.value || null
+    const volInput = document.getElementById("page-volume-single")
+    const volume = volInput ? (parseFloat(volInput.value) || null) : null
+
+    const dimensionUnitSelect = document.getElementById("page-dimension-unit")
+    const dimensionUnit = dimensionUnitSelect?.value || null
+    let length = null
+    let width = null
+    let height = null
+
+    if (dimensionUnit) {
+        const lengthInput = document.getElementById("page-dim-length")
+        length = lengthInput ? (parseFloat(lengthInput.value) || null) : null
+
+        const widthInput = document.getElementById("page-dim-width")
+        width = widthInput ? (parseFloat(widthInput.value) || null) : null
+
+        const heightInput = document.getElementById("page-dim-height")
+        height = heightInput ? (parseFloat(heightInput.value) || null) : null
+    }
+
+    const distanceInput = document.getElementById("page-distance")
+    const distance = distanceInput ? (parseFloat(distanceInput.value) || null) : null
+    const distanceUnit = document.getElementById("page-distance-unit")?.value || null
+
     let isValid = true
     if (currency !== 'FREE') {
       if (!validateRequiredField('page-price', t("pages.price"))) isValid = false
@@ -2025,6 +2763,16 @@ function showScrapedDataModal() {
         itemsPerPurchase,
         ...(maxPerPurchase !== null && { maxPerPurchase }),
         ...(customsCategoryId && { customsCategoryId }),
+        ...(weight !== null && { weight }),
+        ...(weightUnit && { weightUnit }),
+        ...(volume !== null && { volume }),
+        ...(volumeUnit && { volumeUnit }),
+        ...(length !== null && { length }),
+        ...(width !== null && { width }),
+        ...(height !== null && { height }),
+        ...(dimensionUnit && { dimensionUnit }),
+        ...(distance !== null && { distance }),
+        ...(distanceUnit && { distanceUnit }),
         products: [],
         timestamp: new Date().toISOString(),
       }
@@ -2043,7 +2791,7 @@ function showScrapedDataModal() {
         renderApp()
       })
     } else {
-            const page = {
+      const page = {
         url,
         price,
         shippingPrice,
@@ -2053,6 +2801,16 @@ function showScrapedDataModal() {
         itemsPerPurchase,
         ...(maxPerPurchase !== null && { maxPerPurchase }),
         ...(customsCategoryId && { customsCategoryId }),
+        ...(weight !== null && { weight }),
+        ...(weightUnit && { weightUnit }),
+        ...(volume !== null && { volume }),
+        ...(volumeUnit && { volumeUnit }),
+        ...(length !== null && { length }),
+        ...(width !== null && { width }),
+        ...(height !== null && { height }),
+        ...(dimensionUnit && { dimensionUnit }),
+        ...(distance !== null && { distance }),
+        ...(distanceUnit && { distanceUnit }),
         timestamp: new Date().toISOString(),
       }
 
@@ -2078,6 +2836,2387 @@ function showScrapedDataModal() {
   })
 }
 
+
+function renderCalculationRules(prefix, ruleData, showFreeOption = true) {
+    if (!ruleData) ruleData = { type: 'fixed' };
+    let type = ruleData.type || 'fixed';
+
+    if (!showFreeOption && type === 'free') type = 'fixed';
+
+    const session = sessions.find(s => s.id === currentSession);
+
+    // Build types list based on session options
+    const allTypes = [
+        { value: 'item', label: t('deliveryRules.typeItem'), help: t('deliveryRules.typeItemHelp'), always: true },
+        { value: 'free', label: t('deliveryRules.freeDelivery'), help: t('deliveryRules.freeDeliveryHelp'), always: true },
+        { value: 'fixed', label: t('deliveryRules.typeFixed'), help: t('deliveryRules.typeFixedHelp'), always: true },
+        { value: 'percentage', label: t('deliveryRules.typePercentage'), help: t('deliveryRules.typePercentageHelp'), always: true },
+        { value: 'quantity', label: t('deliveryRules.typeQuantity'), help: t('deliveryRules.typeQuantityHelp'), always: true },
+        { value: 'distance', label: t('deliveryRules.typeDistance'), help: t('deliveryRules.typeDistanceHelp'), requires: ['manageDistance'] },
+        { value: 'weight', label: t('deliveryRules.typeWeight'), help: t('deliveryRules.typeWeightHelp'), requires: ['manageWeight'] },
+        { value: 'volume', label: t('deliveryRules.typeVolume'), help: t('deliveryRules.typeVolumeHelp'), requires: ['manageVolume'] },
+        { value: 'dimension', label: t('deliveryRules.typeDimension'), help: t('deliveryRules.typeDimensionHelp'), requires: ['manageDimension'] },
+        { value: 'weight_volume', label: t('deliveryRules.typeWeightVolume'), help: t('deliveryRules.typeWeightVolumeHelp'), requires: ['manageWeight', 'manageVolume'] },
+        { value: 'weight_dimension', label: t('deliveryRules.typeWeightDimension'), help: t('deliveryRules.typeWeightDimensionHelp'), requires: ['manageWeight', 'manageDimension'] },
+    ];
+
+    const types = allTypes.filter(tType => {
+        if (!showFreeOption && tType.value === 'free') return false;
+        if (tType.always) return true;
+        if (tType.requires) {
+            return tType.requires.every(req => session && session[req]);
+        }
+        return true;
+    });
+
+    let html = `<div class="calculation-rules-container space-y-4" data-prefix="${prefix}">`;
+
+    // Type Selector
+    html += `<div>
+        <h5 class="text-sm font-semibold secondary-text mb-3">${t("deliveryRules.pricingType")}</h5>
+        <div class="grid grid-cols-2 gap-2 mb-4">`;
+    types.forEach(tType => {
+        const checkedStatus = type === tType.value ? 'checked' : '';
+        const radioId = `${prefix}_type_${tType.value}`;
+        html += `
+            <div class="relative group">
+                <label for="${radioId}" class="flex items-center space-x-2 p-3 border border-default rounded-xl cursor-pointer hover:bg-[hsl(var(--muted))] transition-all bg-[hsl(var(--card))] has-[:checked]:bg-[hsl(var(--muted))] has-[:checked]:border-[hsl(var(--primary))] has-[:checked]:shadow-sm has-[:checked]:ring-1 has-[:checked]:ring-[hsl(var(--primary))]/10 group">
+                    <input type="radio" id="${radioId}" name="${prefix}_type" value="${tType.value}" class="calculation-type-radio sr-only peer" ${checkedStatus}>
+                    <div class="w-4 h-4 flex-shrink-0 rounded-full border border-default flex items-center justify-center peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                        <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                    </div>
+                    <span class="text-xs font-medium secondary-text peer-checked:card-text transition-colors flex-1 truncate" title="${tType.label}">${tType.label}</span>
+                    <div class="icon icon-help w-3.5 h-3.5 secondary-text opacity-40 hover:opacity-100 transition-opacity cursor-help" title="${tType.help}"></div>
+                </label>
+            </div>
+        `;
+    });
+    html += `</div></div>`;
+
+    // Dynamic Fields Area
+    html += `<div class="calculation-inputs p-4 border border-default rounded bg-[hsl(var(--card))]">`;
+
+    // Mapping type → renderer function
+    const TYPE_RENDERERS = {
+        item: () => `<p class="text-sm secondary-text italic">${t('deliveryRules.typeItem')}</p>`,
+        free: () => `<p class="text-sm font-medium card-text italic">${t('deliveryRules.freeDelivery')}</p>`,
+        fixed: (p, d) => renderFixedInputs(p, d),
+        percentage: (p, d) => renderPercentageInputs(p, d),
+        quantity: (p, d) => renderTieredInputs(p, d, 'quantity'),
+        distance: (p, d) => renderTieredInputs(p, d, 'distance'),
+        weight: (p, d) => renderTieredInputs(p, d, 'weight'),
+        volume: (p, d) => renderTieredInputs(p, d, 'volume'),
+        dimension: (p, d) => renderDimensionInputs(p, d),
+        weight_volume: (p, d) => renderCombinedInputs(p, d, 'weight_volume'),
+        weight_dimension: (p, d) => renderCombinedInputs(p, d, 'weight_dimension'),
+    };
+
+    const renderer = TYPE_RENDERERS[type];
+    if (renderer) html += renderer(prefix, ruleData);
+
+    html += `</div></div>`;
+    return html;
+}
+
+function renderFixedInputs(prefix, data) {
+    return `
+        <div class="mb-3">
+            <label class="block text-sm font-medium secondary-text mb-1">${t('deliveryRules.amount')}</label>
+            <input type="number" step="0.01" class="w-full bg-transparent border border-default rounded px-3 py-2 text-sm focus:border-primary focus:outline-none" 
+                name="${prefix}_amount" value="${data.amount || 0}">
+        </div>
+    `;
+}
+
+function renderPercentageInputs(prefix, data) {
+    return `
+        <div class="mb-3">
+            <label class="block text-sm font-medium secondary-text mb-1">${t('deliveryRules.pctOrderLabel')}</label>
+             <input type="number" step="0.01" class="w-full bg-transparent border border-default rounded px-3 py-2 text-sm focus:border-primary focus:outline-none" 
+                name="${prefix}_rate" value="${data.rate || 0}">
+        </div>
+    `;
+}
+
+function renderRangeRow(type, prefix, idx, range = {}, tierValueType = 'fixed', tierValueMode = 'perUnit', unit = '', unit2 = '') {
+    let inputs = '';
+    
+    // Générer le label de valeur dynamique
+    const valueLabel = getValueLabel(type, tierValueType, tierValueMode, unit, unit2);
+    
+    if (type === 'dimension') {
+        inputs = `
+            <div class="flex-1">
+                <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" value="${range.maxL || ''}" name="${prefix}_range_${idx}_maxL">
+            </div>
+            <div class="flex-1">
+                <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" value="${range.maxW || ''}" name="${prefix}_range_${idx}_maxW">
+            </div>
+            <div class="flex-1">
+                <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" value="${range.maxH || ''}" name="${prefix}_range_${idx}_maxH">
+            </div>
+            <div class="flex-[1.5]">
+                <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-primary focus:outline-none font-medium" placeholder="0.00" value="${range.value || ''}" name="${prefix}_range_${idx}_value">
+            </div>
+        `;
+    } else if (type === 'weight_volume') {
+        inputs = `
+            <div class="flex-1">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" name="${prefix}_range_${idx}_maxWeight" value="${range.maxWeight || ''}">
+            </div>
+            <div class="flex-1">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" name="${prefix}_range_${idx}_maxVol" value="${range.maxVol || ''}">
+            </div>
+            <div class="flex-[1.5]">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-primary focus:outline-none font-medium" placeholder="0.00" name="${prefix}_range_${idx}_value" value="${range.value || ''}">
+            </div>
+        `;
+    } else if (type === 'weight_dimension') {
+        inputs = `
+            <div class="flex-1">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" name="${prefix}_range_${idx}_maxWeight" value="${range.maxWeight || ''}">
+            </div>
+            <div class="flex-1">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" name="${prefix}_range_${idx}_maxL" value="${range.maxL || ''}">
+            </div>
+            <div class="flex-1">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" name="${prefix}_range_${idx}_maxW" value="${range.maxW || ''}">
+            </div>
+            <div class="flex-1">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" name="${prefix}_range_${idx}_maxH" value="${range.maxH || ''}">
+            </div>
+            <div class="flex-1">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-primary focus:outline-none font-medium" placeholder="0.00" name="${prefix}_range_${idx}_value" value="${range.value || ''}">
+            </div>
+        `;
+    } else {
+        const isQuantity = type === 'quantity';
+        const stepValue = isQuantity ? '1' : '0.01';
+        inputs = `
+            <div class="flex-[2] relative">
+               <span class="absolute -top-3 left-0 w-full truncate text-[8px] secondary-text font-bold uppercase transition-opacity group-hover/row:opacity-100 opacity-60">${t('deliveryRules.startingFrom')}</span>
+               <input type="number" step="${stepValue}" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-primary focus:outline-none" placeholder="0" value="${range.min || 0}" name="${prefix}_range_${idx}_min">
+            </div>
+            <div class="flex-[2] relative">
+               <span class="absolute -top-3 left-0 w-full truncate text-[8px] secondary-text font-bold uppercase transition-opacity group-hover/row:opacity-100 opacity-60">${t('deliveryRules.upTo')}</span>
+               <input type="number" step="${stepValue}" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-primary focus:outline-none text-center" placeholder="∞" value="${range.max || ''}" name="${prefix}_range_${idx}_max">
+            </div>
+            <div class="flex-[2] relative">
+               <span class="absolute -top-3 left-0 w-full truncate text-[8px] secondary-text font-bold transition-opacity group-hover/row:opacity-100 opacity-60"><span class="uppercase">${t('deliveryRules.value')}</span> (${valueLabel})</span>
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-primary focus:outline-none font-medium text-center" placeholder="0.00" value="${range.value || ''}" name="${prefix}_range_${idx}_value">
+            </div>
+        `;
+    }
+
+    return `
+        <div class="flex items-center gap-2 range-row bg-[hsl(var(--muted))]/50 p-1.5 rounded-lg border border-default/30 hover:border-primary/30 transition-all group/row" data-index="${idx}">
+            ${inputs}
+            <div class="w-8 flex-shrink-0 flex justify-center">
+                <button class="remove-range-btn text-gray-400 hover:text-red-500 transition-colors p-1" data-prefix="${prefix}" data-index="${idx}">
+                    <span class="icon icon-delete h-4 w-4"></span>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function getUnitOptions(type) {
+    if (type === 'weight') return WEIGHT_UNITS;
+    if (type === 'volume') return VOLUME_UNITS;
+    if (type === 'distance') return DISTANCE_UNITS;
+    if (type === 'dimension') return DIMENSION_UNITS;
+    return [];
+}
+
+function getUnitLabel(type, unitValue) {
+    const units = getUnitOptions(type);
+    const unit = units.find(u => u.value === unitValue);
+    return unit ? unit.label : unitValue;
+}
+
+function getValueLabel(type, tierValueType, tierValueMode, unit = '') {
+    const isPerUnit = tierValueMode === 'perUnit';
+
+    // Define prefix based on tierValueType
+    let prefix = '';
+    if (tierValueType === 'fixed') {
+        prefix = currentCurrencySymbol;
+    } else if (tierValueType === 'pctOrder') {
+        prefix = '%commande';
+    } else if (tierValueType === 'pctDelivery') {
+        prefix = '%livraison';
+    }
+
+    if (!isPerUnit) {
+        // If not per unit, just return the prefix
+        return prefix;
+    }
+
+    // Define unit label based on type
+    let unitLabel = '';
+    if (type === 'quantity') {
+        unitLabel = `/${i18n('shippingFees.item')}`;
+    } else if (type === 'distance') {
+        const unitVal = unit || DEFAULT_DISTANCE_UNIT;
+        unitLabel = `/${getUnitLabel('distance', unitVal)}`;
+    } else if (type === 'weight') {
+        const unitVal = unit || DEFAULT_WEIGHT_UNIT;
+        unitLabel = `/${getUnitLabel('weight', unitVal)}`;
+    } else if (type === 'volume') {
+        const unitVal = unit || DEFAULT_VOLUME_UNIT;
+        unitLabel = `/${getUnitLabel('volume', unitVal)}`;
+    } else if (type === 'dimension') {
+        unitLabel = '';
+    } else if (type === 'weight_dimension') {
+        unitLabel = '';
+    } else if (type === 'weight_volume') {
+        unitLabel = '';
+    }
+
+    return prefix + unitLabel;
+}
+
+function getHelpTextForMode(type, tierValueMode) {
+    if (tierValueMode === 'perUnit') {
+        if (type === 'quantity') {
+            return t('deliveryRules.tierValueModeQuantityPerUnitHelp');
+        } else if (type === 'distance') {
+            return t('deliveryRules.tierValueModeDistancePerUnitHelp');
+        } else if (type === 'weight') {
+            return t('deliveryRules.tierValueModeWeightPerUnitHelp');
+        } else if (type === 'volume') {
+            return t('deliveryRules.tierValueModeVolumePerUnitHelp');
+        }
+        return t('deliveryRules.tierValueModePerUnitHelp');
+    } else {
+        return t('deliveryRules.tierValueModeTotalHelp');
+    }
+}
+
+function renderTieredInputs(prefix, data, type) {
+    const isTiered = data.isTiered || false;
+    const units = getUnitOptions(type);
+    let html = '';
+
+    if (units.length > 0) {
+        let defaultUnit = '';
+        if (type === 'weight') defaultUnit = DEFAULT_WEIGHT_UNIT;
+        else if (type === 'volume') defaultUnit = DEFAULT_VOLUME_UNIT;
+        else if (type === 'distance') defaultUnit = DEFAULT_DISTANCE_UNIT;
+        else if (type === 'quantity') defaultUnit = '';  // No default for quantity
+
+        html += `
+            <div class="mb-4">
+                <label class="block text-xs font-semibold secondary-text mb-1 tracking-wide">${t('deliveryRules.unit')}</label>
+                <select name="${prefix}_unit" class="w-full bg-[hsl(var(--card))] border border-default rounded-md px-3 py-2 text-sm focus:border-primary focus:outline-none transition-colors">
+                    ${units.map(u => `<option value="${u.value}" ${(data.unit || defaultUnit) === u.value ? 'selected' : ''}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+                </select>
+            </div>
+        `;
+    }
+
+    html += `
+        <div class="mb-6 bg-[hsl(var(--muted))] p-1 rounded-lg inline-flex">
+             <label class="px-3 py-1 rounded-md text-sm cursor-pointer transition-all ${!isTiered ? 'bg-[hsl(var(--card))] shadow-sm font-medium' : 'secondary-text'}">
+                <input type="radio" name="${prefix}_mode_toggle" class="hidden is-tiered-toggle" value="single" ${!isTiered ? 'checked' : ''}>
+                ${t('deliveryRules.singleRate')}
+            </label>
+            <label class="px-3 py-1 rounded-md text-sm cursor-pointer transition-all ${isTiered ? 'bg-[hsl(var(--card))] shadow-sm font-medium' : 'secondary-text'}">
+                <input type="radio" name="${prefix}_mode_toggle" class="hidden is-tiered-toggle" value="tiered" ${isTiered ? 'checked' : ''}>
+                ${t('deliveryRules.tieredPricing')}
+            </label>
+            <!-- Hidden actual checkbox for logic compatibility -->
+            <input type="checkbox" name="${prefix}_isTiered" class="is-tiered-checkbox hidden" ${isTiered ? 'checked' : ''}>
+        </div>
+    `;
+
+    if (!isTiered) {
+        let amountLabel = t('deliveryRules.amount')
+        if (type === 'quantity') {
+            amountLabel = t('deliveryRules.unitCost')
+        } else if (['distance', 'weight', 'volume'].includes(type)) {
+            const unitValue = data.unit || (units[0] ? units[0].value : '');
+            const unitLabel = getUnitLabel(type, unitValue);
+            amountLabel = `${t('deliveryRules.amount')} (${currentCurrencySymbol}/${unitLabel})`
+        }
+
+        html += `
+             <div class="mb-3">
+                <label class="block text-sm font-medium secondary-text mb-1">${amountLabel}</label>
+                <div class="relative">
+                    <input type="number" step="0.01" class="w-full bg-transparent border border-default rounded px-3 py-2 text-sm focus:border-primary focus:outline-none pl-3" 
+                        name="${prefix}_amount" value="${data.amount || 0}">
+                </div>
+            </div>
+        `;
+    } else {
+        const tierType = data.tierType || 'global';
+        const tierValueType = data.tierValueType || 'fixed';
+        const tierValueMode = data.tierValueMode || 'perUnit';
+        const unit = data.unit || (units[0] ? units[0].value : '');
+
+        // Segmented Control for Value Mode
+        html += `
+            <div class="mb-4">
+                <label class="block text-xs font-semibold secondary-text mb-2">${t('deliveryRules.tierValueMode')}</label>
+                <div class="bg-[hsl(var(--muted))] p-1 rounded-lg inline-flex">
+                    <label class="px-3 py-1 rounded-md text-sm cursor-pointer transition-all ${tierValueMode === 'perUnit' ? 'bg-[hsl(var(--card))] shadow-sm font-medium' : 'secondary-text'}">
+                        <input type="radio" name="${prefix}_tierValueMode" value="perUnit" class="hidden tier-value-mode-toggle" ${tierValueMode === 'perUnit' ? 'checked' : ''}>
+                        ${t('deliveryRules.tierValueModePerUnit')}
+                    </label>
+                    <label class="px-3 py-1 rounded-md text-sm cursor-pointer transition-all ${tierValueMode === 'total' ? 'bg-[hsl(var(--card))] shadow-sm font-medium' : 'secondary-text'}">
+                        <input type="radio" name="${prefix}_tierValueMode" value="total" class="hidden tier-value-mode-toggle" ${tierValueMode === 'total' ? 'checked' : ''}>
+                        ${t('deliveryRules.tierValueModeTotal')}
+                    </label>
+                </div>
+                <p class="text-[10px] secondary-text italic mt-2 px-1 tier-value-mode-help">
+                    ${getHelpTextForMode(type, tierValueMode)}
+                </p>
+            </div>
+        `;
+
+        html += `
+             <div class="mb-4">
+                <div class="ranges-container space-y-2 mb-4" data-prefix="${prefix}" data-type="${type}" data-tier-value-type="${tierValueType}" data-tier-value-mode="${tierValueMode}" data-unit="${unit}">
+                    ${(() => {
+                        // Create default tiers
+                        const shouldCreateDefaults = isTiered &&
+                                                     (!data.ranges || data.ranges.length === 0) &&
+                                                     ['quantity', 'distance', 'weight', 'volume'].includes(type);
+
+                        if (shouldCreateDefaults) {
+                            const minStart = type === 'quantity' ? 1 : 0;
+                            const maxFirst = 10;
+                            const minSecond = type === 'quantity' ? 11 : 10;
+
+                            data.ranges = [
+                                { min: minStart, max: maxFirst, value: 0 },
+                                { min: minSecond, max: null, value: 0 }
+                            ];
+                        }
+
+                        return (data.ranges || []).map((range, idx) =>
+                            renderRangeRow(type, prefix, idx, range, tierValueType, tierValueMode, unit)
+                        ).join('');
+                    })()}
+                    ${(!data.ranges || data.ranges.length === 0) ? `<div class="empty-placeholder text-xs secondary-text italic text-center p-4 bg-[hsl(var(--muted))] rounded-lg border border-dashed border-default">${t('deliveryRules.noRange')}</div>` : ''}
+                </div>
+
+                <button class="add-range-btn w-full py-2 flex items-center justify-center space-x-2 text-sm font-medium text-primary hover:bg-[hsl(var(--primary))]/10 rounded-md border border-dashed border-[hsl(var(--primary))]/30 transition-all" data-prefix="${prefix}">
+                    <span class="text-lg leading-none">+</span>
+                    <span>${t('deliveryRules.addRange')}</span>
+                </button>
+            </div>
+
+            <!-- Advanced Settings -->
+            <details class="text-xs group mt-4">
+                <summary class="cursor-pointer secondary-text font-medium hover:text-primary transition-colors py-2 px-3 flex items-center gap-2 select-none rounded-md hover:bg-[hsl(var(--muted))]">
+                    <span class="transition-transform group-open:rotate-90">▶</span>
+                    <span>${t('deliveryRules.advancedSettings') || 'Advanced Settings'}</span>
+                </summary>
+                <div class="mt-2 p-3 bg-[hsl(var(--muted))] rounded-lg border border-default space-y-3">
+                    <div>
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <label class="block text-xs font-semibold">${t('deliveryRules.tierType')}</label>
+                            <div class="icon icon-info w-3.5 h-3.5 opacity-70 cursor-help" title="${t('deliveryRules.tierTypeHelp')}"></div>
+                        </div>
+                        <div class="flex space-x-6">
+                            <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierType" value="global" class="sr-only peer" ${tierType === 'global' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.tierGlobal')}</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierType" value="cumulative" class="sr-only peer" ${tierType === 'cumulative' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.tierCumulative')}</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">${t('deliveryRules.tierValueType')}</label>
+                        <div class="flex flex-wrap gap-4">
+                             <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierValueType" value="fixed" class="sr-only peer" ${tierValueType === 'fixed' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.valFixed')}</span>
+                            </label>
+                             <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierValueType" value="pctOrder" class="sr-only peer" ${tierValueType === 'pctOrder' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.valPctOrder')}</span>
+                            </label>
+                             <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierValueType" value="pctDelivery" class="sr-only peer" ${tierValueType === 'pctDelivery' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.valPctDelivery')}</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        `;
+    }
+    return html;
+}
+
+function renderDimensionInputs(prefix, data) {
+    const isTiered = data.isTiered || false;
+    const units = DIMENSION_UNITS;
+    let html = '';
+
+    html += `
+        <div class="mb-4">
+            <label class="block text-xs font-semibold secondary-text mb-1 tracking-wide">${t('deliveryRules.unit')}</label>
+            <select name="${prefix}_unit" class="w-full bg-[hsl(var(--card))] border border-default rounded-md px-3 py-2 text-sm focus:border-primary focus:outline-none transition-colors">
+                ${units.map(u => `<option value="${u.value}" ${(data.unit || DEFAULT_DIMENSION_UNIT) === u.value ? 'selected' : ''}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+            </select>
+        </div>
+    `;
+
+    html += `
+        <div class="mb-6 bg-[hsl(var(--muted))] p-1 rounded-lg inline-flex">
+             <label class="px-3 py-1 rounded-md text-sm cursor-pointer transition-all ${!isTiered ? 'bg-[hsl(var(--card))] shadow-sm font-medium' : 'secondary-text'}">
+                <input type="radio" name="${prefix}_mode_toggle" class="hidden is-tiered-toggle" value="single" ${!isTiered ? 'checked' : ''}>
+                ${t('deliveryRules.singleRate')}
+            </label>
+            <label class="px-3 py-1 rounded-md text-sm cursor-pointer transition-all ${isTiered ? 'bg-[hsl(var(--card))] shadow-sm font-medium' : 'secondary-text'}">
+                <input type="radio" name="${prefix}_mode_toggle" class="hidden is-tiered-toggle" value="tiered" ${isTiered ? 'checked' : ''}>
+                ${t('deliveryRules.tieredPricing')}
+            </label>
+            <input type="checkbox" name="${prefix}_isTiered" class="is-tiered-checkbox hidden" ${isTiered ? 'checked' : ''}>
+        </div>
+    `;
+
+    if (!isTiered) {
+        html += `
+             <div class="mb-4 p-4 bg-[hsl(var(--muted))] rounded-lg border border-default/50">
+                 <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-semibold secondary-text mb-1">${t('deliveryRules.length')} (Max)</label>
+                        <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none" name="${prefix}_maxL" value="${data.maxL || ''}" placeholder="∞">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold secondary-text mb-1">${t('deliveryRules.width')} (Max)</label>
+                        <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none" name="${prefix}_maxW" value="${data.maxW || ''}" placeholder="∞">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold secondary-text mb-1">${t('deliveryRules.height')} (Max)</label>
+                        <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none" name="${prefix}_maxH" value="${data.maxH || ''}" placeholder="∞">
+                    </div>
+                 </div>
+                 
+                <div>
+                    <label class="block text-xs font-semibold secondary-text mb-1">${t('deliveryRules.amount')}</label>
+                    <div class="relative">
+                        <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none pl-3 font-medium" 
+                        name="${prefix}_amount" value="${data.amount || 0}">
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        const tierType = data.tierType || 'global';
+        const tierValueType = data.tierValueType || 'fixed';
+        const tierValueMode = data.tierValueMode || 'perUnit';
+        const unit = data.unit || (units[0] ? units[0].value : '');
+
+        const valueLabel = getValueLabel('dimension', tierValueType, tierValueMode, unit);
+
+        html += `
+             <div class="mb-4">
+                <p class="text-[10px] secondary-text italic mb-3 px-1 flex items-center gap-1.5">
+                    <span class="icon icon-info w-3.5 h-3.5 flex-shrink-0 opacity-70"></span>
+                    <span>${t('deliveryRules.tieredMaxLimitHelp')}</span>
+                </p>
+
+                <div class="flex gap-2 mb-2 text-xs font-semibold secondary-text uppercase tracking-wider pl-2 pr-2">
+                    <div class="flex-1">Max ${t('deliveryRules.length')}</div>
+                    <div class="flex-1">Max ${t('deliveryRules.width')}</div>
+                    <div class="flex-1">Max ${t('deliveryRules.height')}</div>
+                    <div class="flex-[1.5]">${t('deliveryRules.value')} (${valueLabel})</div>
+                    <div class="w-8"></div>
+                </div>
+
+                <div class="ranges-container space-y-2 mb-4" data-prefix="${prefix}" data-type="dimension" data-tier-value-type="${tierValueType}" data-tier-value-mode="${tierValueMode}" data-unit="${unit}">
+                     ${(data.ranges || []).map((range, idx) => renderRangeRow('dimension', prefix, idx, range, tierValueType, tierValueMode, unit)).join('')}
+                    ${(!data.ranges || data.ranges.length === 0) ? `<div class="empty-placeholder text-xs secondary-text italic text-center p-4 bg-[hsl(var(--muted))] rounded-lg border border-dashed border-default">${t('deliveryRules.noRange')}</div>` : ''}
+                </div>
+
+                <button class="add-range-btn w-full py-2 flex items-center justify-center space-x-2 text-sm font-medium text-primary hover:bg-[hsl(var(--primary))]/10 rounded-md border border-dashed border-[hsl(var(--primary))]/30 transition-all" data-prefix="${prefix}">
+                    <span class="text-lg leading-none">+</span>
+                    <span>${t('deliveryRules.addRange')}</span>
+                </button>
+            </div>
+
+            <!-- Advanced Settings -->
+            <details class="text-xs group mt-4">
+                <summary class="cursor-pointer secondary-text font-medium hover:text-primary transition-colors py-2 px-3 flex items-center gap-2 select-none rounded-md hover:bg-[hsl(var(--muted))]">
+                    <span class="transition-transform group-open:rotate-90">▶</span>
+                    <span>${t('deliveryRules.advancedSettings') || 'Advanced Settings'}</span>
+                </summary>
+                <div class="mt-2 p-3 bg-[hsl(var(--muted))] rounded-lg border border-default space-y-3">
+                    <div>
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <label class="block text-xs font-semibold">${t('deliveryRules.tierType')}</label>
+                            <div class="icon icon-info w-3.5 h-3.5 opacity-70 cursor-help" title="${t('deliveryRules.tierTypeHelp')}"></div>
+                        </div>
+                        <div class="flex space-x-6">
+                            <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierType" value="global" class="sr-only peer" ${tierType === 'global' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.tierGlobal')}</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierType" value="cumulative" class="sr-only peer" ${tierType === 'cumulative' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.tierCumulative')}</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">${t('deliveryRules.tierValueType')}</label>
+                        <div class="flex flex-wrap gap-4">
+                             <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierValueType" value="fixed" class="sr-only peer" ${tierValueType === 'fixed' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.valFixed')}</span>
+                            </label>
+                             <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierValueType" value="pctOrder" class="sr-only peer" ${tierValueType === 'pctOrder' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.valPctOrder')}</span>
+                            </label>
+                             <label class="flex items-center cursor-pointer group">
+                                <input type="radio" name="${prefix}_tierValueType" value="pctDelivery" class="sr-only peer" ${tierValueType === 'pctDelivery' ? 'checked' : ''}>
+                                <div class="w-4 h-4 rounded-full border border-default flex items-center justify-center mr-2 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                                </div>
+                                <span class="secondary-text peer-checked:card-text transition-colors">${t('deliveryRules.valPctDelivery')}</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        `;
+    }
+    return html;
+}
+
+function renderCombinedInputs(prefix, data, type) {
+    const weightUnits = WEIGHT_UNITS;
+    const volUnits = type === 'weight_dimension' ? DIMENSION_UNITS : VOLUME_UNITS;
+    const tierValueType = data.tierValueType || 'fixed';
+    const tierValueMode = data.tierValueMode || 'perUnit';
+    const weightUnit = data.weightUnit || (weightUnits[0] ? weightUnits[0].value : '');
+    const volUnit = data.volUnit || (volUnits[0] ? volUnits[0].value : '');
+     
+    let html = '';
+
+    const defaultVolUnit = type === 'weight_dimension' ? DEFAULT_DIMENSION_UNIT : DEFAULT_VOLUME_UNIT;
+    html += `<div class="flex space-x-4 mb-4">
+        <div class="w-1/2">
+             <label class="block text-xs font-semibold secondary-text mb-1 tracking-wide">${t('deliveryRules.weight')} ${t('deliveryRules.unit')}</label>
+             <select name="${prefix}_weightUnit" class="w-full bg-[hsl(var(--card))] border border-default rounded-md px-3 py-2 text-sm focus:border-primary focus:outline-none">
+                ${weightUnits.map(u => `<option value="${u.value}" ${(data.weightUnit || DEFAULT_WEIGHT_UNIT) === u.value ? 'selected' : ''}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+             </select>
+        </div>
+        <div class="w-1/2">
+             <label class="block text-xs font-semibold secondary-text mb-1 tracking-wide">${type === 'weight_dimension' ? t('deliveryRules.dimension') : t('deliveryRules.volume')} ${t('deliveryRules.unit')}</label>
+             <select name="${prefix}_volUnit" class="w-full bg-[hsl(var(--card))] border border-default rounded-md px-3 py-2 text-sm focus:border-primary focus:outline-none">
+                ${volUnits.map(u => `<option value="${u.value}" ${(data.volUnit || defaultVolUnit) === u.value ? 'selected' : ''}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+             </select>
+        </div>
+    </div>`;
+
+    const valueLabel = getValueLabel(type, tierValueType, tierValueMode, weightUnit, volUnit);
+
+    html += `
+            <div class="mb-4">
+                <p class="text-[10px] secondary-text italic mb-3 px-1 flex items-center gap-1.5">
+                    <span class="icon icon-info w-3.5 h-3.5 flex-shrink-0 opacity-70"></span>
+                    <span>${t('deliveryRules.tieredMaxLimitHelp')}</span>
+                </p>
+                <div class="flex gap-2 mb-2 text-xs font-semibold secondary-text uppercase tracking-wider pl-2 pr-2">
+                    <div class="flex-1">Max ${t('deliveryRules.weight')}</div>
+                    ${type === 'weight_dimension' ? `
+                        <div class="flex-1">Max ${t('deliveryRules.length')}</div>
+                        <div class="flex-1">Max ${t('deliveryRules.width')}</div>
+                        <div class="flex-1">Max ${t('deliveryRules.height')}</div>
+                        <div class="flex-1">${t('deliveryRules.value')} (${valueLabel})</div>
+                    ` : `
+                        <div class="flex-1">Max ${t('deliveryRules.volume')}</div>
+                        <div class="flex-[1.5]">${t('deliveryRules.value')} (${valueLabel})</div>
+                    `}
+                    <div class="w-8"></div>
+                </div>
+
+                <div class="ranges-container space-y-2 mb-4" data-prefix="${prefix}" data-type="${type}" data-tier-value-type="${tierValueType}" data-tier-value-mode="${tierValueMode}" data-unit="${weightUnit}" data-unit2="${volUnit}">
+                    ${(data.ranges || []).map((range, idx) => renderRangeRow(type, prefix, idx, range, tierValueType, tierValueMode, weightUnit, volUnit)).join('')}
+                    ${(!data.ranges || data.ranges.length === 0) ? `<div class="empty-placeholder text-xs secondary-text italic text-center p-4 bg-[hsl(var(--muted))] rounded-lg border border-dashed border-default">${t('deliveryRules.noRange')}</div>` : ''}
+                </div>
+
+                <button class="add-range-btn w-full py-2 flex items-center justify-center space-x-2 text-sm font-medium text-primary hover:bg-[hsl(var(--primary))]/10 rounded-md border border-dashed border-[hsl(var(--primary))]/30 transition-all" data-prefix="${prefix}">
+                    <span class="text-lg leading-none">+</span>
+                    <span>${t('deliveryRules.addRange')}</span>
+                </button>
+            </div>
+    `;
+
+    return html;
+}
+
+function updateValueLabels(container, prefix, type, data) {
+    // Get current values
+    const tierValueType = data.tierValueType || 'fixed';
+    const tierValueMode = data.tierValueMode || 'perUnit';
+    const unit = data.unit || '';
+    const weightUnit = data.weightUnit || '';
+    const volUnit = data.volUnit || '';
+
+    // Generate the label
+    let valueLabel = '';
+    if (['quantity', 'distance', 'weight', 'volume', 'dimension'].includes(type)) {
+        valueLabel = getValueLabel(type, tierValueType, tierValueMode, unit);
+    } else if (['weight_volume', 'weight_dimension'].includes(type)) {
+        valueLabel = getValueLabel(type, tierValueType, tierValueMode, weightUnit, volUnit);
+    }
+
+    // For dimension, weight_volume, weight_dimension: update header row only
+    if (['dimension', 'weight_volume', 'weight_dimension'].includes(type)) {
+        const rangesContainer = container.querySelector('.ranges-container');
+        if (rangesContainer) {
+            let headerRow = rangesContainer.previousElementSibling;
+            while (headerRow && !headerRow.classList.contains('flex')) {
+                headerRow = headerRow.previousElementSibling;
+            }
+
+            if (headerRow) {
+                const headerDivs = Array.from(headerRow.querySelectorAll('div'));
+                const valueHeaderDiv = headerDivs.find(div => {
+                    const text = div.textContent || '';
+                    return text.includes(t('deliveryRules.value'));
+                });
+
+                if (valueHeaderDiv) {
+                    valueHeaderDiv.textContent = `${t('deliveryRules.value')} (${valueLabel})`;
+                }
+            }
+        }
+    }
+    // For quantity, distance, weight, volume: update spans in range rows only
+    else if (['quantity', 'distance', 'weight', 'volume'].includes(type)) {
+        const rangeRows = container.querySelectorAll('.range-row');
+        rangeRows.forEach(row => {
+            const valueInput = row.querySelector('input[name$="_value"]');
+            if (valueInput) {
+                const parent = valueInput.parentElement;
+                const existingSpan = parent.querySelector('span.absolute');
+                if (existingSpan) {
+                    existingSpan.textContent = `${t('deliveryRules.value')} (${valueLabel})`;
+                }
+            }
+        });
+    }
+}
+
+// ============================================================================
+// DELIVERY RULES - EXTRACTION HELPERS
+// ============================================================================
+
+/**
+ * Extract ranges from tiered inputs in the delivery rules form
+ * @param {string} prefix - input name prefix (ex: 'global_seller1')
+ * @param {HTMLElement} container - DOM container
+ * @param {string[]} nullableFields - fields that can be null (empty)
+ * @returns {Object[]} ranges array
+ */
+function extractRangesFromInputs(prefix, container, nullableFields = ['max']) {
+    const rangeInputs = Array.from(container.querySelectorAll(`input[name^="${prefix}_range_"]`));
+    const rangesMap = {};
+
+    rangeInputs.forEach(inp => {
+        const match = inp.name.match(new RegExp(`${prefix}_range_(\\d+)_(.+)`));
+        if (match) {
+            const idx = match[1];
+            const field = match[2];
+            if (!rangesMap[idx]) rangesMap[idx] = {};
+
+            const isEmpty = inp.value === '' || inp.value === null || inp.value === undefined;
+            if (nullableFields.includes(field) && isEmpty) {
+                rangesMap[idx][field] = null;
+            } else {
+                const parsedValue = parseFloat(inp.value);
+                rangesMap[idx][field] = isNaN(parsedValue) ? 0 : parsedValue;
+            }
+        }
+    });
+
+    return Object.values(rangesMap);
+}
+
+/**
+ * Extract calculation rule from delivery rules form inputs
+ * @param {string} prefix - input name prefix (ex: 'global_seller1')
+ * @param {HTMLElement|Document} container - DOM container containing the form
+ * @returns {Object} calculationMethod object with type and associated parameters
+ */
+function extractCalculationRule(prefix, container) {
+    const typeRadio = container.querySelector(`input[name="${prefix}_type"]:checked`);
+    const type = typeRadio ? typeRadio.value : 'fixed';
+    
+    const rule = { type };
+    
+    if (type === 'fixed') {
+        const amountInput = container.querySelector(`input[name="${prefix}_amount"]`);
+        rule.amount = amountInput ? parseFloat(amountInput.value) || 0 : 0;
+    } else if (type === 'percentage') {
+        const baseRadio = container.querySelector(`input[name="${prefix}_base"]:checked`);
+        rule.base = baseRadio ? baseRadio.value : 'order';
+        const rateInput = container.querySelector(`input[name="${prefix}_rate"]`);
+        rule.rate = rateInput ? parseFloat(rateInput.value) || 0 : 0;
+    } else if (['quantity', 'distance', 'weight', 'volume'].includes(type)) { // EXCLUDE dimension
+        const unitSelect = container.querySelector(`select[name="${prefix}_unit"]`);
+        if (unitSelect) rule.unit = unitSelect.value;
+        
+        const isTieredCb = container.querySelector(`input[name="${prefix}_isTiered"]`);
+        rule.isTiered = isTieredCb ? isTieredCb.checked : false;
+        
+        if (!rule.isTiered) {
+             const amountInput = container.querySelector(`input[name="${prefix}_amount"]`);
+             rule.amount = amountInput ? parseFloat(amountInput.value) || 0 : 0;
+        } else {
+             const tierTypeRadio = container.querySelector(`input[name="${prefix}_tierType"]:checked`);
+             rule.tierType = tierTypeRadio ? tierTypeRadio.value : 'global';
+             
+             const valTypeRadio = container.querySelector(`input[name="${prefix}_tierValueType"]:checked`);
+             rule.tierValueType = valTypeRadio ? valTypeRadio.value : 'fixed';
+             
+             const valModeRadio = container.querySelector(`input[name="${prefix}_tierValueMode"]:checked`);
+             rule.tierValueMode = valModeRadio ? valModeRadio.value : 'perUnit';
+             
+             rule.ranges = extractRangesFromInputs(prefix, container, ['max']);
+        }
+    } else if (type === 'dimension') {
+        const unitSelect = container.querySelector(`select[name="${prefix}_unit"]`);
+        if (unitSelect) rule.unit = unitSelect.value;
+
+        const isTieredCb = container.querySelector(`input[name="${prefix}_isTiered"]`);
+        rule.isTiered = isTieredCb ? isTieredCb.checked : false;
+        
+        if (!rule.isTiered) {
+            const maxL = container.querySelector(`input[name="${prefix}_maxL"]`);
+            const maxW = container.querySelector(`input[name="${prefix}_maxW"]`);
+            const maxH = container.querySelector(`input[name="${prefix}_maxH"]`);
+            const amount = container.querySelector(`input[name="${prefix}_amount"]`);
+            rule.maxL = maxL ? parseFloat(maxL.value) || 0 : 0;
+            rule.maxW = maxW ? parseFloat(maxW.value) || 0 : 0;
+            rule.maxH = maxH ? parseFloat(maxH.value) || 0 : 0;
+            rule.amount = amount ? parseFloat(amount.value) || 0 : 0;
+        } else {
+             const tierTypeRadio = container.querySelector(`input[name="${prefix}_tierType"]:checked`);
+             rule.tierType = tierTypeRadio ? tierTypeRadio.value : 'global';
+             const valTypeRadio = container.querySelector(`input[name="${prefix}_tierValueType"]:checked`);
+             rule.tierValueType = valTypeRadio ? valTypeRadio.value : 'fixed';
+             
+             const valModeRadio = container.querySelector(`input[name="${prefix}_tierValueMode"]:checked`);
+             rule.tierValueMode = valModeRadio ? valModeRadio.value : 'perUnit';
+
+             rule.ranges = extractRangesFromInputs(prefix, container, ['maxL', 'maxW', 'maxH']);
+        }
+
+    } else if (['weight_volume', 'weight_dimension'].includes(type)) {
+         const wUnit = container.querySelector(`select[name="${prefix}_weightUnit"]`);
+         if (wUnit) rule.weightUnit = wUnit.value;
+         const vUnit = container.querySelector(`select[name="${prefix}_volUnit"]`);
+         if (vUnit) rule.volUnit = vUnit.value;
+         
+         const valTypeRadio = container.querySelector(`input[name="${prefix}_tierValueType"]:checked`);
+         if (valTypeRadio) rule.tierValueType = valTypeRadio.value;
+         
+         const valModeRadio = container.querySelector(`input[name="${prefix}_tierValueMode"]:checked`);
+         if (valModeRadio) rule.tierValueMode = valModeRadio.value;
+         
+         rule.ranges = extractRangesFromInputs(prefix, container, ['maxWeight', 'maxVol']);
+    }
+
+    return rule;
+}
+
+// ============================================================================
+// HTML COMPONENT HELPERS
+// ============================================================================
+
+function renderRadioOption(config) {
+  const { name, value, checked, label, helpText, helpIcon = true, additionalClasses = '' } = config
+  const radioId = `${name}_${value}`
+  
+  return `
+    <div class="relative ${additionalClasses}">
+      <label for="${radioId}" class="flex items-center p-4 border border-default rounded-xl cursor-pointer hover:bg-[hsl(var(--muted))] transition-all bg-[hsl(var(--card))] has-[:checked]:border-[hsl(var(--primary))] has-[:checked]:bg-[hsl(var(--muted))]/50 has-[:checked]:ring-1 has-[:checked]:ring-[hsl(var(--primary))]/20">
+        <input type="radio" id="${radioId}" name="${name}" value="${value}" class="sr-only peer" ${checked ? 'checked' : ''}>
+        <div class="w-5 h-5 rounded-full border border-default flex items-center justify-center mr-3 peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+          <div class="w-2 h-2 rounded-full bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+        </div>
+        <span class="card-text font-medium text-sm transition-colors peer-checked:text-primary flex-1 truncate">${label}</span>
+        ${helpIcon && helpText ? `<div class="icon icon-help w-4 h-4 secondary-text opacity-40 hover:opacity-100 transition-opacity cursor-help" title="${helpText}"></div>` : ''}
+      </label>
+    </div>
+  `
+}
+
+function renderToggleSwitch(config) {
+  const { id, label, checked, containerClass = '', additionalAttrs = '' } = config
+  
+  return `
+    <div class="${containerClass}">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-medium card-text">${label}</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="${id}" class="sr-only peer" ${checked ? 'checked' : ''} ${additionalAttrs}>
+          <div class="toggle-switch"></div>
+        </label>
+      </div>
+    </div>
+  `
+}
+
+function renderConditionalThresholdInput(config) {
+  const { containerClass, inputClass, label, value, visible, placeholder = '0.00', additionalAttrs = '' } = config
+  
+  return `
+    <div class="${containerClass}" style="display: ${visible ? 'block' : 'none'}">
+      <label class="block text-xs secondary-text mb-1 ml-1">${label}</label>
+      <input type="number" class="w-full px-3 py-2 border border-default input-bg card-text rounded-md ${inputClass} focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" value="${value || ''}" placeholder="${placeholder}" step="0.01" ${additionalAttrs}>
+    </div>
+  `
+}
+
+function renderActionButton(config) {
+  const { id, label, icon, primary = true, fullWidth = false, additionalClass = '' } = config
+  const bgClass = primary ? 'primary-bg primary-text' : 'secondary-bg secondary-text'
+  const widthClass = fullWidth ? 'w-full' : ''
+  
+  return `
+    <button id="${id}" class="${widthClass} flex items-center justify-center space-x-2 cursor-pointer ${bgClass} px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm border border-default ${additionalClass}">
+      ${icon ? `<span class="icon icon-${icon} h-5 w-5"></span>` : ''}
+      <span class="text-base font-medium">${label}</span>
+    </button>
+  `
+}
+
+// ============================================================================
+// END HTML COMPONENT HELPERS
+// ============================================================================
+
+// ============================================================================
+// TIER VALIDATION
+// ============================================================================
+
+function getTierType(container) {
+    const prefix = container.dataset.prefix;
+    const typeRadio = container.querySelector(`input[name="${prefix}_type"]:checked`);
+    return typeRadio ? typeRadio.value : 'quantity';
+}
+
+function requiresInteger(type) {
+    return type === 'quantity';
+}
+
+function getMinValueForFirstTier(type) {
+    return requiresInteger(type) ? 1 : 0;
+}
+
+function parseTierRange(row, type) {
+    const minInput = row.querySelector('input[name$="_min"]');
+    const maxInput = row.querySelector('input[name$="_max"]');
+    const valueInput = row.querySelector('input[name$="_value"]');
+
+    let maxValue = null;
+    if (maxInput && maxInput.value !== '') {
+        const parsed = parseFloat(maxInput.value);
+        maxValue = !isNaN(parsed) ? parsed : null;
+    }
+
+    return {
+        row: row,
+        index: parseInt(row.dataset.index),
+        min: minInput ? parseFloat(minInput.value) || 0 : 0,
+        max: maxValue,
+        value: valueInput ? parseFloat(valueInput.value) || 0 : 0,
+        minInput: minInput,
+        maxInput: maxInput,
+        valueInput: valueInput
+    };
+}
+
+function getAllTierRanges(container, type) {
+    const rangesContainer = container.querySelector('.ranges-container');
+    if (!rangesContainer) return [];
+
+    const rows = Array.from(rangesContainer.querySelectorAll('.range-row'));
+    return rows.map(row => parseTierRange(row, type));
+}
+
+/**
+ * Show validation error on an input field
+ * @param {HTMLElement} input - The input element
+ * @param {string} message - Error message
+ * @param {string} severity - 'warning' (orange) or 'error' (red)
+ */
+function showTierInputError(input, message, severity = 'warning') {
+    if (!input) return;
+
+    clearTierInputError(input);
+
+    if (severity === 'error') {
+        input.classList.add('!border-red-500', 'focus:!ring-red-500');
+        input.dataset.errorSeverity = 'error';
+    } else {
+        input.classList.add('!border-orange-500', 'focus:!ring-orange-500');
+        input.dataset.errorSeverity = 'warning';
+    }
+
+    const row = input.closest('.range-row');
+    if (row) {
+        let errorDiv = row.nextElementSibling;
+        if (!errorDiv || !errorDiv.classList.contains('tier-error-message')) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'tier-error-message text-xs mt-1 px-2 mb-2';
+            row.parentNode.insertBefore(errorDiv, row.nextSibling);
+        }
+
+        if (severity === 'error') {
+            errorDiv.className = 'tier-error-message text-xs text-red-500 mt-1 px-2 mb-2';
+        } else {
+            errorDiv.className = 'tier-error-message text-xs text-orange-500 mt-1 px-2 mb-2';
+        }
+
+        errorDiv.textContent = message;
+    }
+}
+
+function clearTierInputError(input) {
+    if (!input) return;
+
+    input.classList.remove('!border-red-500', 'focus:!ring-red-500', '!border-orange-500', 'focus:!ring-orange-500');
+    delete input.dataset.errorSeverity;
+
+    const row = input.closest('.range-row');
+    if (row) {
+        // Check if next sibling is an error message
+        const errorDiv = row.nextElementSibling;
+        if (errorDiv && errorDiv.classList.contains('tier-error-message')) {
+            errorDiv.remove();
+        }
+    }
+}
+
+function clearAllTierErrors(container) {
+    const inputs = container.querySelectorAll('input[data-error-severity]');
+    inputs.forEach(input => clearTierInputError(input));
+
+    const errorDivs = container.querySelectorAll('.tier-error-message');
+    errorDivs.forEach(div => div.remove());
+
+    // Clear container-level errors
+    const rangesContainer = container.querySelector('.ranges-container');
+    if (rangesContainer) {
+        const containerError = rangesContainer.querySelector('.tier-container-error');
+        if (containerError) containerError.remove();
+    }
+}
+
+/**
+ * Validate that min is >= 0 (or >= 1 for first quantity tier)
+ */
+function validateMinValue(range, type, isFirstTier, severity = 'warning') {
+    const minRequired = isFirstTier ? getMinValueForFirstTier(type) : 0;
+
+    if (range.min < minRequired) {
+        const message = isFirstTier && requiresInteger(type)
+            ? t('validation.tier.minMustBeOne')
+            : t('validation.tier.minMustBeZeroOrMore');
+        showTierInputError(range.minInput, message, severity);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validate that max > min (when max is not empty)
+ */
+function validateMaxGreaterThanMin(range, type, severity = 'warning') {
+    if (range.max !== null && range.max <= range.min) {
+        showTierInputError(range.maxInput, t('validation.tier.maxMustBeGreaterThanMin'), severity);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validate that field values are valid numbers
+ */
+function validateNumericFields(range, type, severity = 'warning', isLastTier = false) {
+    let valid = true;
+
+    if (range.minInput) {
+        const minValue = range.minInput.value.trim();
+        if (minValue === '' || isNaN(parseFloat(minValue))) {
+            showTierInputError(range.minInput, t('validation.tier.mustBeNumber'), severity);
+            valid = false;
+        }
+    }
+
+    // Empty max is only allowed for the last tier (means infinity)
+    if (range.maxInput) {
+        const maxValue = range.maxInput.value.trim();
+
+        if (maxValue === '') {
+            // Empty max is only valid for the last tier
+            if (!isLastTier) {
+                showTierInputError(range.maxInput, t('validation.tier.mustBeNumber'), severity);
+                valid = false;
+            }
+        } else if (isNaN(parseFloat(maxValue))) {
+            // Non-empty but invalid number
+            showTierInputError(range.maxInput, t('validation.tier.mustBeNumber'), severity);
+            valid = false;
+        }
+    }
+
+    if (range.valueInput) {
+        const valueStr = range.valueInput.value.trim();
+        if (severity === 'error') {
+            if (valueStr === '' || isNaN(parseFloat(valueStr))) {
+                showTierInputError(range.valueInput, t('validation.tier.mustBeNumber'), severity);
+                valid = false;
+            }
+        } else {
+            if (valueStr !== '' && isNaN(parseFloat(valueStr))) {
+                showTierInputError(range.valueInput, t('validation.tier.mustBeNumber'), severity);
+                valid = false;
+            }
+        }
+    }
+
+    return valid;
+}
+
+/**
+ * Validate integer constraint for quantity types
+ */
+function validateIntegerConstraint(range, type, severity = 'warning') {
+    if (!requiresInteger(type)) return true;
+
+    let valid = true;
+
+    // Check min is integer
+    if (!isNaN(range.min) && range.min !== Math.floor(range.min)) {
+        showTierInputError(range.minInput, t('validation.tier.mustBeInteger'), severity);
+        valid = false;
+    }
+
+    // Check max is integer (if not null)
+    if (range.max !== null && !isNaN(range.max) && range.max !== Math.floor(range.max)) {
+        showTierInputError(range.maxInput, t('validation.tier.mustBeInteger'), severity);
+        valid = false;
+    }
+
+    return valid;
+}
+
+/**
+ * Validate value is filled and >= 0
+ */
+function validateValueField(range, severity = 'warning') {
+    if (!range.valueInput) return true;
+
+    const valueStr = range.valueInput.value.trim();
+
+    // Check if empty (only for submission validation)
+    if (severity === 'error' && valueStr === '') {
+        showTierInputError(range.valueInput, t('validation.tier.valueRequired'), severity);
+        return false;
+    }
+
+    // Check if negative
+    if (range.value < 0) {
+        showTierInputError(range.valueInput, t('validation.tier.valueMustBePositive'), severity);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validate continuity between consecutive tiers
+ */
+function validateContinuity(currentRange, previousRange, type, severity = 'warning') {
+    if (!previousRange) return true;
+
+    // Previous tier must have a max
+    if (previousRange.max === null) {
+        // This is handled by validateLastTierInfinity
+        return true;
+    }
+
+    const expectedMin = requiresInteger(type) ? previousRange.max + 1 : previousRange.max;
+
+    if (currentRange.min !== expectedMin) {
+        const message = t('validation.tier.gapBetweenTiers');
+        showTierInputError(currentRange.minInput, message, severity);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validate no overlaps between tiers
+ */
+function validateNoOverlap(currentRange, previousRange, type, severity = 'warning') {
+    if (!previousRange || previousRange.max === null) return true;
+
+    const minRequired = requiresInteger(type) ? previousRange.max + 1 : previousRange.max;
+
+    if (currentRange.min < minRequired) {
+        showTierInputError(currentRange.minInput, t('validation.tier.overlapDetected'), severity);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validate that last tier has empty max (infinity)
+ */
+function validateLastTierInfinity(ranges, severity = 'error') {
+    if (ranges.length === 0) return true;
+
+    const lastRange = ranges[ranges.length - 1];
+    if (lastRange.max !== null) {
+        showTierInputError(lastRange.maxInput, t('validation.tier.lastTierMustBeInfinity'), severity);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validate at least one tier exists
+ */
+function validateAtLeastOneTier(ranges, container, severity = 'error') {
+    if (ranges.length === 0) {
+        // Show error message in the ranges container
+        const rangesContainer = container.querySelector('.ranges-container');
+        if (rangesContainer) {
+            let errorDiv = rangesContainer.querySelector('.tier-container-error');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.className = 'tier-container-error text-xs text-red-500 mt-1 px-2 mb-2';
+                rangesContainer.insertBefore(errorDiv, rangesContainer.firstChild);
+            }
+            errorDiv.textContent = t('validation.tier.atLeastOneTierRequired');
+        }
+        return false;
+    }
+
+    // Remove container error if exists
+    const rangesContainer = container.querySelector('.ranges-container');
+    if (rangesContainer) {
+        const errorDiv = rangesContainer.querySelector('.tier-container-error');
+        if (errorDiv) errorDiv.remove();
+    }
+
+    return true;
+}
+
+/**
+ * Validate no duplicate ranges
+ */
+function validateNoDuplicates(ranges, severity = 'error') {
+    const seen = new Set();
+    let valid = true;
+
+    ranges.forEach(range => {
+        const key = `${range.min}-${range.max}`;
+        if (seen.has(key)) {
+            showTierInputError(range.minInput, t('validation.tier.duplicateRange'), severity);
+            showTierInputError(range.maxInput, t('validation.tier.duplicateRange'), severity);
+            valid = false;
+        }
+        seen.add(key);
+    });
+
+    return valid;
+}
+
+/**
+ * Perform live validation on a single input field
+ */
+function performLiveValidation(input, container) {
+    const type = getTierType(container);
+    const ranges = getAllTierRanges(container, type);
+    const row = input.closest('.range-row');
+
+    if (!row) return;
+
+    const currentRange = parseTierRange(row, type);
+    const currentIndex = ranges.findIndex(r => r.row === row);
+    const isFirstTier = currentIndex === 0;
+    const isLastTier = currentIndex === ranges.length - 1;
+    const previousRange = currentIndex > 0 ? ranges[currentIndex - 1] : null;
+
+    clearTierInputError(input);
+
+    const fieldName = input.name.split('_').pop();
+
+    if (fieldName === 'min') {
+        if (!validateNumericFields(currentRange, type, 'warning', isLastTier)) return;
+
+        validateMinValue(currentRange, type, isFirstTier, 'warning');
+        validateIntegerConstraint(currentRange, type, 'warning');
+        validateContinuity(currentRange, previousRange, type, 'warning');
+        validateNoOverlap(currentRange, previousRange, type, 'warning');
+    } else if (fieldName === 'max') {
+        if (!validateNumericFields(currentRange, type, 'warning', isLastTier)) return;
+
+        validateMaxGreaterThanMin(currentRange, type, 'warning');
+        validateIntegerConstraint(currentRange, type, 'warning');
+
+        if (currentIndex < ranges.length - 1) {
+            const nextRange = ranges[currentIndex + 1];
+            const nextMinInput = nextRange.minInput;
+            clearTierInputError(nextMinInput);
+            const updatedNextRange = parseTierRange(nextRange.row, type);
+            validateContinuity(updatedNextRange, currentRange, type, 'warning');
+        }
+    } else if (fieldName === 'value') {
+        validateNumericFields(currentRange, type, 'warning', isLastTier);
+        if (currentRange.value < 0) {
+            validateValueField(currentRange, 'warning');
+        }
+    }
+}
+
+/**
+ * Perform complete validation before submission
+ * Returns true if all validations pass, false otherwise
+ */
+function performSubmissionValidation(container) {
+    const type = getTierType(container);
+    const ranges = getAllTierRanges(container, type);
+
+    clearAllTierErrors(container);
+
+    let valid = true;
+
+    // Rule 1: At least one tier must exist
+    if (!validateAtLeastOneTier(ranges, container, 'error')) {
+        valid = false;
+    }
+
+    if (ranges.length === 0) {
+        return false; // Can't proceed with other validations
+    }
+
+    // Rule 2: Last tier must have empty max (infinity)
+    if (!validateLastTierInfinity(ranges, 'error')) {
+        valid = false;
+    }
+
+    // Rule 3: No duplicate ranges
+    if (!validateNoDuplicates(ranges, 'error')) {
+        valid = false;
+    }
+
+    // Rule 4: Validate each tier
+    ranges.forEach((range, index) => {
+        const isFirstTier = index === 0;
+        const isLastTier = index === ranges.length - 1;
+        const previousRange = index > 0 ? ranges[index - 1] : null;
+
+        if (!validateNumericFields(range, type, 'error', isLastTier)) {
+            valid = false;
+            return; // Skip other validations if fields aren't valid numbers
+        }
+
+        if (!validateMinValue(range, type, isFirstTier, 'error')) {
+            valid = false;
+        }
+
+        if (!validateMaxGreaterThanMin(range, type, 'error')) {
+            valid = false;
+        }
+
+        if (!validateIntegerConstraint(range, type, 'error')) {
+            valid = false;
+        }
+
+        if (!validateContinuity(range, previousRange, type, 'error')) {
+            valid = false;
+        }
+
+        if (!validateNoOverlap(range, previousRange, type, 'error')) {
+            valid = false;
+        }
+
+        if (!validateValueField(range, 'error')) {
+            valid = false;
+        }
+    });
+
+    return valid;
+}
+
+/**
+ * Validate that an input contains a valid numeric value and remove/add error styles
+ * @param {HTMLInputElement} input - The input element to validate
+ * @param {string} errorKey - error message key for translation
+ * @returns {boolean} true if valid, false otherwise
+ */
+function validateNumericInput(input, errorKey = 'validation.tier.mustBeNumber') {
+    if (!input) return true;
+
+    const value = parseFloat(input.value);
+    const isValid = !isNaN(value) && input.value.trim() !== '';
+
+    if (!isValid) {
+        input.classList.add('!border-red-500', 'focus:!ring-red-500');
+        let errorDiv = input.parentElement.querySelector('.field-error-message');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'field-error-message text-xs text-red-500 mt-1';
+            input.parentElement.appendChild(errorDiv);
+        }
+        errorDiv.textContent = t(errorKey);
+    } else {
+        input.classList.remove('!border-red-500', 'focus:!ring-red-500');
+        const errorDiv = input.parentElement.querySelector('.field-error-message');
+        if (errorDiv) errorDiv.remove();
+    }
+
+    return isValid;
+}
+
+/**
+ * Validate numeric fields for non-tiered calculation types (Fixed, Percentage)
+ */
+function validateNonTieredFields(container) {
+    const prefix = container.dataset.prefix;
+    const type = getTierType(container);
+
+    if (type === 'fixed') {
+        return validateNumericInput(container.querySelector(`input[name="${prefix}_amount"]`));
+    } else if (type === 'percentage') {
+        return validateNumericInput(container.querySelector(`input[name="${prefix}_rate"]`));
+    }
+
+    return true;
+}
+
+/**
+ * Validate all tier-based forms in the current view
+ * Used before saving
+ */
+function validateAllTierForms() {
+    let allValid = true;
+
+    const containers = document.querySelectorAll('.calculation-rules-container');
+
+    containers.forEach(container => {
+        const prefix = container.dataset.prefix;
+        const type = getTierType(container);
+        const isTieredCb = container.querySelector(`input[name="${prefix}_isTiered"]`);
+
+        if (!isTieredCb || !isTieredCb.checked) {
+            if (!validateNonTieredFields(container)) {
+                allValid = false;
+            }
+        } else {
+            // Only validate types that use min/max/value structure
+            if (['quantity', 'distance', 'weight', 'volume'].includes(type)) {
+                if (!performSubmissionValidation(container)) {
+                    allValid = false;
+                }
+            }
+        }
+    });
+
+    return allValid;
+}
+
+// ============================================================================
+// END TIER VALIDATION
+// ============================================================================
+
+// ============================================================================
+// EVENT HANDLERS
+// ============================================================================
+
+function setupSameSellerListener(container) {
+  const sameSellerSelect = container.querySelector('.same-seller-select')
+  if (!sameSellerSelect) return
+  
+  sameSellerSelect.addEventListener('change', (e) => {
+    const value = e.target.value
+    const configContainer = container.querySelector('.custom-config-container')
+    if (!configContainer) return
+    
+    configContainer.style.display = (value && value !== 'None') ? 'none' : 'block'
+  })
+}
+
+function setupBillingMethodListeners(container, safeSellerId) {
+  const radios = container.querySelectorAll('.billing-method-radio')
+  radios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      const val = e.target.value
+      toggleBillingMethodSections(safeSellerId, val)
+    })
+  })
+}
+
+function toggleBillingMethodSections(safeSellerId, method) {
+  const globalFreeContainer = document.querySelector('.global-free-shipping-container')
+  const groupsContainer = document.getElementById(`groups-container-${safeSellerId}`)
+  const globalCalcContainer = document.getElementById(`calc-global-${safeSellerId}`)
+  
+  switch(method) {
+    case 'global':
+      if (globalFreeContainer) globalFreeContainer.style.display = 'block'
+      if (groupsContainer) groupsContainer.style.display = 'none'
+      if (globalCalcContainer) globalCalcContainer.style.display = 'block'
+      break
+    case 'groups':
+      if (globalFreeContainer) globalFreeContainer.style.display = 'none'
+      if (groupsContainer) groupsContainer.style.display = 'block'
+      if (globalCalcContainer) globalCalcContainer.style.display = 'none'
+      break
+    case 'free':
+      if (globalFreeContainer) globalFreeContainer.style.display = 'none'
+      if (groupsContainer) groupsContainer.style.display = 'none'
+      if (globalCalcContainer) globalCalcContainer.style.display = 'none'
+      break
+  }
+}
+
+function setupFreeShippingToggle(container, selector, thresholdSelector) {
+  const checkbox = container.querySelector(selector)
+  if (!checkbox) return
+  
+  checkbox.addEventListener('change', (e) => {
+    const inputDiv = container.querySelector(thresholdSelector)
+    if (inputDiv) {
+      inputDiv.style.display = e.target.checked ? 'block' : 'none'
+    }
+  })
+}
+
+function setupAddGroupButtonListener(session, seller, safeSellerId) {
+  const addGroupBtn = document.querySelector('.add-group-btn')
+  if (!addGroupBtn) return
+  
+  addGroupBtn.addEventListener('click', () => {
+    const container = document.querySelector('.groups-list')
+    const index = container.children.length
+    const newGroupHtml = renderGroupItem(session, seller, { name: t("deliveryRules.newGroupPlaceholder") }, index, safeSellerId)
+    
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = newGroupHtml
+    container.appendChild(tempDiv.firstElementChild)
+  })
+}
+
+// ============================================================================
+// END EVENT HANDLERS
+// ============================================================================
+
+// ============================================================================
+// DELIVERY RULES - DATA MANAGEMENT
+// ============================================================================
+
+function ensureDefaultRule(session, seller) {
+  if (!session.deliveryRules) session.deliveryRules = []
+  
+  const existingRule = session.deliveryRules.find(r => r.seller === seller)
+
+  if (!existingRule) {
+    const defaultRule = {
+      seller: seller,
+      billingMethod: 'global',
+      calculationMethod: {
+        type: 'item'
+      }
+    }
+    session.deliveryRules.push(defaultRule)
+    return true
+  }
+  
+  return false
+}
+
+function getRule(session, seller) {
+  const rule = (session.deliveryRules || []).find(r => r.seller === seller) || {}
+  if (!rule.billingMethod) {
+    rule.billingMethod = 'global'
+  }
+  return rule
+}
+
+function getSellerProducts(session, seller) {
+  return session.products.filter(p => 
+    p.pages.some(page => page.seller === seller)
+  )
+}
+
+function renderSellerRecapCard(session, seller, rule) {
+  const billingMethod = rule.billingMethod || 'global'
+  const copiedFrom = rule.copiedFrom || null
+
+  function renderCalcMethodDetails(calcMethod, indent = false) {
+    if (!calcMethod || !calcMethod.type) return ''
+
+    const type = calcMethod.type
+    const indentClass = indent ? 'ml-4' : ''
+    let html = ''
+
+    if (type === 'free') {
+      html = `<div class="${indentClass} text-sm card-text font-medium">${t("deliveryRules.freeDelivery")}</div>`
+    } else if (type === 'item') {
+      html = `<div class="${indentClass} text-sm secondary-text italic">${t("deliveryRules.typeItem")}</div>`
+    } else if (type === 'fixed') {
+      const amount = calcMethod.amount || 0
+      html = `
+        <div class="${indentClass} text-sm secondary-text">
+          <span class="font-medium">${t("deliveryRules.typeFixed")}:</span>
+          <span class="card-text font-semibold">${amount.toFixed(2)} ${currentCurrencySymbol}</span>
+        </div>
+      `
+    } else if (type === 'percentage') {
+      const rate = calcMethod.rate || 0
+      const base = calcMethod.base || 'order'
+      const baseLabel = base === 'order' ? t("deliveryRules.baseOrder") : t("deliveryRules.baseDelivery")
+      html = `
+        <div class="${indentClass} text-sm secondary-text">
+          <span class="font-medium">${t("deliveryRules.typePercentage")}:</span>
+          <span class="card-text font-semibold">${(rate * 100).toFixed(2)}%</span>
+          <span class="text-xs muted-text">(${baseLabel})</span>
+        </div>
+      `
+    } else {
+      // Other types: quantity, distance, weight, volume, dimension, weight_volume, weight_dimension
+      const typeLabels = {
+        'quantity': t("deliveryRules.typeQuantity"),
+        'distance': t("deliveryRules.typeDistance"),
+        'weight': t("deliveryRules.typeWeight"),
+        'volume': t("deliveryRules.typeVolume"),
+        'dimension': t("deliveryRules.typeDimension"),
+        'weight_volume': t("deliveryRules.typeWeightVolume"),
+        'weight_dimension': t("deliveryRules.typeWeightDimension")
+      }
+
+      const ranges = calcMethod.ranges || []
+      const isTiered = calcMethod.isTiered !== false && ranges.length > 0
+
+      if (isTiered) {
+        const tierValueType = calcMethod.tierValueType || 'fixed'
+        const tierValueMode = calcMethod.tierValueMode || 'total'
+
+        html = `
+          <div class="${indentClass} text-sm">
+            <div class="font-medium secondary-text mb-1">
+              ${typeLabels[type] || type}
+              <span class="text-xs muted-text font-normal ml-1">
+                (${ranges.length} ${ranges.length === 1 ? t("deliveryRules.addRange").toLowerCase() : t("deliveryRules.ranges").toLowerCase()})
+              </span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-default">
+                    <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.min")}</th>
+                    <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.max")}</th>
+                    <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.value")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${ranges.map((range, idx) => {
+                    const min = range.min !== undefined && range.min !== null ? range.min : ''
+                    const max = range.max !== undefined && range.max !== null ? range.max : '∞'
+                    let value = range.value || 0
+
+                    let valueDisplay = ''
+                    if (tierValueType === 'fixed') {
+                      valueDisplay = `${value.toFixed(2)} ${currentCurrencySymbol}`
+                    } else if (tierValueType === 'pctOrder' || tierValueType === 'pctDelivery') {
+                      valueDisplay = `${(value * 100).toFixed(2)}%`
+                    }
+
+                    if (tierValueMode === 'perUnit') {
+                      valueDisplay += ` / ${t("deliveryRules.unit").toLowerCase()}`
+                    }
+
+                    return `
+                      <tr class="border-b border-default/50">
+                        <td class="py-1 px-2 card-text">${min}</td>
+                        <td class="py-1 px-2 card-text">${max}</td>
+                        <td class="py-1 px-2 card-text font-medium">${valueDisplay}</td>
+                      </tr>
+                    `
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `
+      } else if (calcMethod.amount !== undefined) {
+        // Simple pricing (non-tiered)
+        const amount = calcMethod.amount || 0
+        const unit = calcMethod.unit || ''
+        let unitLabel = unit
+
+        if (unit && t(`attributes.units.${unit}`)) {
+          unitLabel = t(`attributes.units.${unit}`)
+        }
+
+        html = `
+          <div class="${indentClass} text-sm secondary-text">
+            <span class="font-medium">${typeLabels[type] || type}:</span>
+            <span class="card-text font-semibold">${amount.toFixed(2)} ${currentCurrencySymbol}</span>
+            ${unit ? `<span class="text-xs muted-text"> / ${unitLabel}</span>` : ''}
+          </div>
+        `
+      } else {
+        // Fallback for unknown structure
+        html = `<div class="${indentClass} text-sm muted-text italic">${typeLabels[type] || type}</div>`
+      }
+    }
+
+    return html
+  }
+
+  let detailsHtml = ''
+
+  if (copiedFrom) {
+    detailsHtml = `
+      <div class="p-3 secondary-bg rounded-lg border border-default">
+        <p class="text-sm secondary-text">
+          <span class="font-medium">${t("deliveryRules.sameSellerAs")}:</span>
+          <span class="card-text font-semibold">${copiedFrom}</span>
+        </p>
+      </div>
+    `
+  } else if (billingMethod === 'free') {
+    detailsHtml = `
+      <div class="p-3 secondary-bg rounded-lg border border-default">
+        <p class="text-sm card-text font-medium">${t("deliveryRules.freeDelivery")}</p>
+      </div>
+    `
+  } else if (billingMethod === 'global') {
+    detailsHtml = `
+      <div class="p-3 secondary-bg rounded-lg border border-default space-y-2">
+        <p class="text-xs font-semibold secondary-text uppercase tracking-wide">${t("deliveryRules.sameFee")}</p>
+        ${renderCalcMethodDetails(rule.calculationMethod)}
+    `
+    if (rule.globalFreeShipping && rule.globalFreeShippingThreshold) {
+      detailsHtml += `
+        <div class="pt-2 mt-2 border-t border-default">
+          <p class="text-xs secondary-text">
+            <span class="font-medium">${t("deliveryRules.freeShippingThreshold")}</span>
+            <span class="card-text font-semibold ml-1">${rule.globalFreeShippingThreshold.toFixed(2)} ${currentCurrencySymbol}</span>
+          </p>
+        </div>
+      `
+    }
+    detailsHtml += `</div>`
+  } else if (billingMethod === 'groups') {
+    const groupCount = (rule.groups || []).length
+    detailsHtml = `
+      <div class="p-3 secondary-bg rounded-lg border border-default space-y-3">
+        <p class="text-xs font-semibold secondary-text uppercase tracking-wide">
+          ${groupCount} ${groupCount === 1 ? t("deliveryRules.addGroup") : t("deliveryRules.addGroup") + 's'}
+        </p>
+    `
+    ;(rule.groups || []).forEach((group, idx) => {
+      const productCount = (group.productIds || []).length
+      detailsHtml += `
+        <div class="p-2 bg-[hsl(var(--card))] rounded border border-default/50 space-y-1">
+          <div class="flex justify-between items-start">
+            <p class="text-sm font-medium card-text">${group.name || t("deliveryRules.newGroupPlaceholder")}</p>
+            <span class="text-xs secondary-text bg-[hsl(var(--muted))] px-2 py-0.5 rounded">
+              ${productCount} ${productCount === 1 ? t("sessions.product") : t("sessions.products")}
+            </span>
+          </div>
+          ${renderCalcMethodDetails(group.calculationMethod, false)}
+      `
+      if (group.freeShipping && group.freeShippingThreshold) {
+        detailsHtml += `
+          <div class="pt-1 mt-1 border-t border-default/50">
+            <p class="text-xs secondary-text">
+              <span class="font-medium">${t("deliveryRules.freeShippingThreshold")}</span>
+              <span class="card-text font-semibold ml-1">${group.freeShippingThreshold.toFixed(2)} ${currentCurrencySymbol}</span>
+            </p>
+          </div>
+        `
+      }
+      detailsHtml += `</div>`
+    })
+    detailsHtml += `</div>`
+  }
+
+  if (session.importFeesEnabled && rule.customsClearanceFee) {
+    detailsHtml += `
+      <div class="p-3 mt-2 secondary-bg rounded-lg border border-default">
+        <p class="text-sm secondary-text">
+          <span class="font-medium">${t("deliveryRules.customsClearanceFees")}:</span>
+          <span class="card-text font-semibold">${rule.customsClearanceFee.toFixed(2)} ${currentCurrencySymbol}</span>
+        </p>
+      </div>
+    `
+  }
+
+  return `
+  <div class="card-bg rounded-xl shadow-md p-4 border border-default">
+    <div class="flex justify-between items-start mb-3">
+      <h4 class="text-lg font-semibold card-text">${seller}</h4>
+      <button class="edit-seller-btn text-sm secondary-bg secondary-text px-4 py-2 rounded-lg hover:opacity-80 transition-colors duration-200 border border-default flex-shrink-0" data-seller="${seller}">
+        ${t("common.edit")}
+      </button>
+    </div>
+    <div class="space-y-2">
+      ${detailsHtml}
+    </div>
+  </div>
+  `
+}
+
+function renderGroupItem(session, seller, group, gIdx, safeSellerId) {
+  return `
+    <div class="group-item p-4 border border-default rounded-lg bg-[hsl(var(--card))]" data-index="${gIdx}">
+        <div class="flex justify-between items-center mb-4">
+            <input type="text" class="group-name-input bg-transparent border-b border-default focus:border-primary focus:outline-none font-medium text-sm" value="${group.name || ''}" placeholder="${t("deliveryRules.groupName")}">
+            <button class="text-red-500 hover:text-red-700 delete-group-btn transition-colors p-1">
+                <span class="icon icon-delete h-5 w-5"></span>
+            </button>
+        </div>
+        <div class="mb-4">
+             <p class="text-xs font-semibold secondary-text mb-2 uppercase tracking-wide px-1">${t("deliveryRules.products")}</p>
+             <div class="max-h-40 overflow-y-auto border border-default rounded-lg p-2 bg-[hsl(var(--muted))] scrollbar-thin">
+                 ${getSellerProducts(session, seller).map(prod => `
+                    <label class="flex items-center space-x-3 py-2 px-1 cursor-pointer group">
+                        <input type="checkbox" class="group-product-checkbox sr-only peer" data-seller="${seller}" data-group-index="${gIdx}" value="${prod.id}" ${group.productIds && group.productIds.includes(prod.id) ? 'checked' : ''}>
+                        <div class="w-4 h-4 rounded border border-default flex items-center justify-center peer-checked:border-[hsl(var(--primary))] peer-checked:bg-[hsl(var(--primary))] transition-all">
+                            <div class="w-1.5 h-1.5 rounded-sm bg-white scale-0 peer-checked:scale-100 transition-transform"></div>
+                        </div>
+                        <span class="text-sm secondary-text peer-checked:card-text transition-colors truncate" title="${prod.name}">${prod.name}</span>
+                    </label>
+                `).join('')}
+             </div>
+        </div>
+        <div class="mb-4 bg-[hsl(var(--muted))] rounded-lg p-3 border border-default">
+            <div class="flex items-center justify-between">
+                <span class="text-sm font-medium card-text">${t("deliveryRules.freeDeliveryCondition")}</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="group-free-shipping-checkbox sr-only peer" ${group.freeShipping ? 'checked' : ''}>
+                    <div class="toggle-switch"></div>
+                </label>
+            </div>
+            <div class="mt-3 group-free-shipping-threshold" style="display: ${group.freeShipping ? 'block' : 'none'}">
+                <label class="block text-xs secondary-text mb-1 ml-1">${t("deliveryRules.freeDeliveryThreshold")}</label>
+                <input type="number" class="w-full px-3 py-2 border border-default input-bg card-text rounded-md group-free-shipping-input focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" value="${group.freeShippingThreshold || ''}" placeholder="0.00" step="0.01">
+            </div>
+        </div>
+        <div class="step-3-group">
+             ${renderCalculationRules(`group_${safeSellerId}_${gIdx}`, group.calculationMethod || { type: 'fixed' })}
+        </div>
+    </div>
+  `;
+}
+
+// ============================================================================
+// SELLER DELIVERY RULES VIEW
+// ============================================================================
+
+function renderSellerEditorHeader(seller) {
+  return `
+    <div class="flex items-center space-x-3 mb-4">
+      <button class="muted-text p-2 cursor-pointer" id="back-to-list-button">
+        <span class="icon icon-back h-8 w-8"></span>
+      </button>
+      <h1 class="text-2xl font-semibold card-text truncate flex-1">${seller}</h1>
+    </div>
+  `
+}
+
+function renderSameSellerSelector(session, seller, copiedFrom) {
+  const otherSellers = getUniqueSellers(session).filter(s => s !== seller)
+  
+  return `
+    <div class="mb-6">
+      <label class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.sameSellerAs")}</label>
+      <select class="same-seller-select w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary border-transparent" data-seller="${seller}">
+        <option value="None" ${copiedFrom === 'None' ? 'selected' : ''}>${t("deliveryRules.none")}</option>
+        ${otherSellers.map(s2 => `<option value="${s2}" ${copiedFrom === s2 ? 'selected' : ''}>${s2}</option>`).join('')}
+      </select>
+    </div>
+  `
+}
+
+function renderGlobalFreeShippingContainer(rule, billingMethod) {
+  const globalFree = rule.globalFreeShipping || false
+  const globalThreshold = rule.globalFreeShippingThreshold || ''
+  const visible = billingMethod === 'global'
+  
+  return `
+    <div class="mb-6 global-free-shipping-container bg-[hsl(var(--muted))] rounded-xl p-4 border border-default" style="display: ${visible ? 'block' : 'none'}">
+      ${renderToggleSwitch({
+        id: 'global-free-shipping-checkbox',
+        label: t("deliveryRules.freeDeliveryCondition"),
+        checked: globalFree,
+        additionalAttrs: 'class="global-free-shipping-checkbox"'
+      })}
+      ${renderConditionalThresholdInput({
+        containerClass: 'mt-3 global-free-shipping-threshold',
+        inputClass: 'global-free-shipping-input',
+        label: t("deliveryRules.freeDeliveryThreshold"),
+        value: globalThreshold,
+        visible: globalFree
+      })}
+    </div>
+  `
+}
+
+function renderBillingMethodSection(rule, safeSellerId, seller) {
+  const billingMethod = rule.billingMethod || 'global'
+  
+  return `
+    <div class="step-1 mb-6">
+      <h5 class="text-sm font-semibold secondary-text mb-2">${t("deliveryRules.billingMethod")}</h5>
+      <div class="space-y-3 mb-4">
+        ${renderRadioOption({
+          name: `billing-method-${safeSellerId}`,
+          value: 'global',
+          checked: billingMethod === 'global',
+          label: t("deliveryRules.sameFee"),
+          helpText: t("deliveryRules.billingMethodSameFeeHelp"),
+          additionalClasses: 'billing-method-radio'
+        })}
+        ${renderRadioOption({
+          name: `billing-method-${safeSellerId}`,
+          value: 'groups',
+          checked: billingMethod === 'groups',
+          label: t("deliveryRules.dependsOnProducts"),
+          helpText: t("deliveryRules.billingMethodDependsHelp"),
+          additionalClasses: 'billing-method-radio'
+        })}
+        ${renderRadioOption({
+          name: `billing-method-${safeSellerId}`,
+          value: 'free',
+          checked: billingMethod === 'free',
+          label: t("deliveryRules.freeDelivery"),
+          helpText: null,
+          helpIcon: false,
+          additionalClasses: 'billing-method-radio'
+        })}
+      </div>
+      ${renderGlobalFreeShippingContainer(rule, billingMethod)}
+    </div>
+  `
+}
+
+function renderGroupsSection(session, seller, rule, safeSellerId) {
+  const billingMethod = rule.billingMethod || 'global'
+  const visible = billingMethod === 'groups'
+  
+  return `
+    <div class="step-2 mb-6" id="groups-container-${safeSellerId}" style="display: ${visible ? 'block' : 'none'}">
+      <h5 class="text-sm font-semibold secondary-text mb-3 px-1">${t("deliveryRules.dependsOnProducts")}</h5>
+      
+      <div class="groups-list space-y-4 mb-6" data-seller="${seller}">
+        ${(rule.groups || []).map((group, gIdx) => renderGroupItem(session, seller, group, gIdx, safeSellerId)).join('')}
+      </div>
+      
+      <button class="add-group-btn w-full py-3 flex items-center justify-center space-x-2 text-sm font-semibold secondary-bg secondary-text hover:bg-[hsl(var(--muted))] rounded-xl border border-default transition-all shadow-sm" data-seller="${seller}">
+        <span class="icon icon-plus h-4 w-4"></span>
+        <span>${t("deliveryRules.addGroup")}</span>
+      </button>
+    </div>
+  `
+}
+
+function renderGlobalCalculationSection(rule, safeSellerId) {
+  const billingMethod = rule.billingMethod || 'global'
+  const visible = billingMethod === 'global'
+  
+  return `
+    <div class="step-3-global mb-6" id="calc-global-${safeSellerId}" style="display: ${visible ? 'block' : 'none'}">
+      ${renderCalculationRules(`global_${safeSellerId}`, rule.calculationMethod || {}, false)}
+    </div>
+  `
+}
+
+function renderCustomsFeesSection(session, rule, seller) {
+  if (!session.importFeesEnabled) return ''
+  
+  return `
+    <div class="mt-6 pt-6 border-t border-default">
+      <label class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.customsClearanceFees")}</label>
+      <input type="number" step="0.01" value="${rule.customsClearanceFee || 0}" class="customs-clearance-fees w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary border-transparent" data-seller="${seller}">
+    </div>
+  `
+}
+
+function renderCustomConfigContainer(session, seller, rule, safeSellerId, copiedFrom) {
+  const visible = copiedFrom === 'None'
+  
+  return `
+    <div class="custom-config-container" style="display: ${visible ? 'block' : 'none'}">
+      ${renderBillingMethodSection(rule, safeSellerId, seller)}
+      ${renderGroupsSection(session, seller, rule, safeSellerId)}
+      ${renderGlobalCalculationSection(rule, safeSellerId)}
+      ${renderCustomsFeesSection(session, rule, seller)}
+    </div>
+  `
+}
+
+function renderSaveButton() {
+  return `
+    <button id="save-seller-rules" class="w-full mt-8 flex items-center justify-center space-x-2 cursor-pointer primary-bg primary-text px-4 py-4 rounded-xl hover:opacity-90 transition-all shadow-md">
+      <span class="text-lg font-semibold">${t("common.save")}</span>
+    </button>
+  `
+}
+
+// ============================================================================
+// END SELLER DELIVERY RULES VIEW
+// ============================================================================
+
+function renderSellerDeliveryRulesView(seller) {
+  const session = sessions.find((s) => s.id === currentSession)
+  const rule = getRule(session, seller)
+  const safeSellerId = seller.replace(/\s+/g, '-')
+  const copiedFrom = rule.copiedFrom || 'None'
+
+  app.innerHTML = `
+    <div class="mx-4 pb-8">
+      ${renderSellerEditorHeader(seller)}
+      <div class="seller-card card-bg rounded-xl shadow-md p-6 border border-default">
+        ${renderSameSellerSelector(session, seller, copiedFrom)}
+        ${renderCustomConfigContainer(session, seller, rule, safeSellerId, copiedFrom)}
+        ${renderSaveButton()}
+      </div>
+    </div>
+  `
+
+  const sellerCard = document.querySelector('.seller-card')
+  if (!sellerCard) return
+
+  document.getElementById("back-to-list-button")?.addEventListener("click", () => {
+    currentRulesView = "list"
+    currentSellerEditing = null
+    renderApp()
+  })
+
+  setupSameSellerListener(sellerCard)
+  setupBillingMethodListeners(sellerCard, safeSellerId)
+  setupFreeShippingToggle(sellerCard, '.global-free-shipping-checkbox', '.global-free-shipping-threshold')
+  setupAddGroupButtonListener(session, seller, safeSellerId)
+
+  sellerCard.addEventListener('click', (e) => {
+    if (e.target.closest('.delete-group-btn')) {
+        e.target.closest('.group-item').remove()
+    }
+  })
+
+  sellerCard.addEventListener('change', (e) => {
+    if (e.target.classList.contains('group-free-shipping-checkbox')) {
+        const groupItem = e.target.closest('.group-item')
+        const thresholdDiv = groupItem.querySelector('.group-free-shipping-threshold')
+        if (thresholdDiv) thresholdDiv.style.display = e.target.checked ? 'block' : 'none'
+    }
+    
+    if (e.target.classList.contains('calculation-type-radio')) {
+        const container = e.target.closest('.calculation-rules-container')
+        const prefix = container.dataset.prefix
+        const newType = e.target.value
+        const inputsContainer = container.querySelector('.calculation-inputs')
+
+        clearAllTierErrors(container);
+
+        let newHtml = ''
+        if (newType === 'fixed') newHtml = renderFixedInputs(prefix, { type: 'fixed' })
+        else if (newType === 'percentage') newHtml = renderPercentageInputs(prefix, { type: 'percentage' })
+        else if (['quantity', 'distance', 'weight', 'volume'].includes(newType)) newHtml = renderTieredInputs(prefix, { type: newType }, newType)
+        else if (newType === 'dimension') newHtml = renderDimensionInputs(prefix, { type: newType })
+        else if (['weight_volume', 'weight_dimension'].includes(newType)) newHtml = renderCombinedInputs(prefix, { type: newType }, newType)
+        else if (newType === 'item') newHtml = `<p class="text-sm secondary-text italic">${t('deliveryRules.typeItem')}</p>`
+
+        inputsContainer.innerHTML = newHtml
+    }
+
+    if (e.target.classList.contains('is-tiered-toggle') || e.target.classList.contains('is-tiered-checkbox')) {
+        const element = e.target
+        const container = element.closest('.calculation-rules-container')
+        const prefix = container.dataset.prefix
+
+        clearAllTierErrors(container);
+
+        const data = extractCalculationRule(prefix, container)
+        data.isTiered = element.classList.contains('is-tiered-toggle') ? (element.value === 'tiered') : element.checked
+
+        const type = data.type
+        const inputsContainer = container.querySelector('.calculation-inputs')
+
+        if (type === 'dimension') {
+            inputsContainer.innerHTML = renderDimensionInputs(prefix, data)
+        } else if (['weight_volume', 'weight_dimension'].includes(type)) {
+            inputsContainer.innerHTML = renderCombinedInputs(prefix, data, type)
+        } else {
+            inputsContainer.innerHTML = renderTieredInputs(prefix, data, type)
+        }
+    }
+
+    // Update labels when unit changes
+    if (e.target.name && e.target.name.endsWith('_unit')) {
+        const select = e.target
+        const container = select.closest('.calculation-rules-container')
+        const prefix = container.dataset.prefix
+        const data = extractCalculationRule(prefix, container)
+        const type = data.type
+        
+        const inputsContainer = container.querySelector('.calculation-inputs')
+        
+        if (!data.isTiered && ['distance', 'weight', 'volume'].includes(type)) {
+            inputsContainer.innerHTML = renderTieredInputs(prefix, data, type)
+        } else if (data.isTiered) {
+            updateValueLabels(container, prefix, type, data)
+        }
+    }
+
+    // Update labels when tierValueMode changes
+    if (e.target.classList.contains('tier-value-mode-toggle')) {
+        const element = e.target
+        const container = element.closest('.calculation-rules-container')
+        const prefix = container.dataset.prefix
+        const data = extractCalculationRule(prefix, container)
+        const type = data.type
+        const helpText = container.querySelector('.tier-value-mode-help')
+        if (helpText) {
+            helpText.textContent = getHelpTextForMode(type, element.value)
+        }
+        const labels = container.querySelectorAll(`label:has(input[name="${prefix}_tierValueMode"])`)
+        labels.forEach(label => {
+            const radio = label.querySelector('input')
+            if (radio.value === element.value) {
+                label.classList.add('bg-[hsl(var(--card))]', 'shadow-sm', 'font-medium')
+                label.classList.remove('secondary-text')
+            } else {
+                label.classList.remove('bg-[hsl(var(--card))]', 'shadow-sm', 'font-medium')
+                label.classList.add('secondary-text')
+            }
+        })
+        updateValueLabels(container, prefix, type, data)
+    }
+
+    // Update labels when tierValueType changes
+    if (e.target.name && e.target.name.endsWith('_tierValueType')) {
+        const element = e.target
+        const container = element.closest('.calculation-rules-container')
+        const prefix = container.dataset.prefix
+        const data = extractCalculationRule(prefix, container)
+        const type = data.type
+        updateValueLabels(container, prefix, type, data)
+    }
+
+    // When a max changes, update the next row's min
+    if (e.target.name && e.target.name.includes('_range_') && e.target.name.endsWith('_max')) {
+        const input = e.target
+        const row = input.closest('.range-row')
+        const nextRow = row?.nextElementSibling
+        if (nextRow && nextRow.classList.contains('range-row')) {
+            const container = row.closest('.calculation-rules-container')
+            const prefix = container.dataset.prefix
+            const typeRadio = container.querySelector(`input[name="${prefix}_type"]:checked`)
+            const type = typeRadio ? typeRadio.value : 'quantity'
+            
+            if (!['dimension', 'weight_volume', 'weight_dimension'].includes(type) && !input.name.includes('_maxL') && !input.name.includes('_maxW') && !input.name.includes('_maxH') && !input.name.includes('_maxWeight') && !input.name.includes('_maxVol')) {
+                const nextMinInput = nextRow.querySelector('input[name$="_min"]')
+                if (nextMinInput) {
+                    const val = parseFloat(input.value) || 0
+                    nextMinInput.value = (type === 'quantity') ? val + 1 : val
+                }
+            }
+        }
+    }
+  })
+
+  // ============================================================================
+  // TIER VALIDATION: Live validation
+  // ============================================================================
+  sellerCard.addEventListener('blur', (e) => {
+    const input = e.target;
+
+    if (input.tagName !== 'INPUT') return;
+
+    const container = input.closest('.calculation-rules-container');
+    if (!container) return;
+
+    const prefix = container.dataset.prefix;
+
+    // Check if this is a tier input field
+    if (input.name && input.name.includes('_range_')) {
+      const isTieredCb = container.querySelector(`input[name="${prefix}_isTiered"]`);
+
+      // Only validate if tiered mode is enabled
+      if (isTieredCb && isTieredCb.checked) {
+        const type = getTierType(container);
+
+        // Only validate types that use min/max/value structure
+        if (['quantity', 'distance', 'weight', 'volume'].includes(type)) {
+          performLiveValidation(input, container);
+        }
+      }
+    }
+    // Validate Fixed amount field
+    else if (input.name === `${prefix}_amount`) {
+      const value = parseFloat(input.value);
+      if (isNaN(value) || input.value.trim() === '') {
+        input.classList.add('!border-orange-500', 'focus:!ring-orange-500');
+
+        let errorDiv = input.parentElement.querySelector('.field-error-message');
+        if (!errorDiv) {
+          errorDiv = document.createElement('div');
+          errorDiv.className = 'field-error-message text-xs text-orange-500 mt-1';
+          input.parentElement.appendChild(errorDiv);
+        }
+        errorDiv.textContent = t('validation.tier.mustBeNumber');
+      } else {
+        input.classList.remove('!border-orange-500', 'focus:!ring-orange-500');
+        const errorDiv = input.parentElement.querySelector('.field-error-message');
+        if (errorDiv) errorDiv.remove();
+      }
+    }
+    // Validate Percentage rate field
+    else if (input.name === `${prefix}_rate`) {
+      const value = parseFloat(input.value);
+      if (isNaN(value) || input.value.trim() === '') {
+        input.classList.add('!border-orange-500', 'focus:!ring-orange-500');
+
+        let errorDiv = input.parentElement.querySelector('.field-error-message');
+        if (!errorDiv) {
+          errorDiv = document.createElement('div');
+          errorDiv.className = 'field-error-message text-xs text-orange-500 mt-1';
+          input.parentElement.appendChild(errorDiv);
+        }
+        errorDiv.textContent = t('validation.tier.mustBeNumber');
+      } else {
+        input.classList.remove('!border-orange-500', 'focus:!ring-orange-500');
+        const errorDiv = input.parentElement.querySelector('.field-error-message');
+        if (errorDiv) errorDiv.remove();
+      }
+    }
+  }, true);
+
+  sellerCard.addEventListener('click', (e) => {
+    if (e.target.closest('.add-range-btn')) {
+        const btn = e.target.closest('.add-range-btn')
+        const prefix = btn.dataset.prefix
+        const container = btn.closest('.calculation-rules-container')
+        const rangesContainer = container.querySelector('.ranges-container')
+        if (!rangesContainer) return
+        
+        const typeRadio = container.querySelector(`input[name="${prefix}_type"]:checked`)
+        const type = typeRadio ? typeRadio.value : 'quantity'
+        
+        // Extract current data to get tierValueType, tierValueMode, and units
+        const data = extractCalculationRule(prefix, container)
+        const tierValueType = data.tierValueType || 'fixed'
+        const tierValueMode = data.tierValueMode || 'perUnit'
+        const unit = data.unit || ''
+        const weightUnit = data.weightUnit || ''
+        const volUnit = data.volUnit || ''
+        
+        const existingRows = rangesContainer.querySelectorAll('.range-row')
+        const newIndex = existingRows.length
+        
+        let newMin = 0
+
+        if (existingRows.length > 0 && !['dimension', 'weight_volume', 'weight_dimension'].includes(type)) {
+            const lastRow = existingRows[existingRows.length - 1]
+            const maxInput = lastRow.querySelector('input[name$="_max"]')
+            const minInput = lastRow.querySelector('input[name$="_min"]')
+
+            // Smart insertion: if last tier is infinite (max is null/empty)
+            if (maxInput && (maxInput.value === '' || maxInput.value === null)) {
+                // Calculate diff from previous tier, default to 10
+                let diff = 10;
+                if (existingRows.length >= 2) {
+                    const prevRow = existingRows[existingRows.length - 2]
+                    const prevMinInput = prevRow.querySelector('input[name$="_min"]')
+                    const lastMin = parseFloat(minInput.value) || 0
+                    const prevMin = parseFloat(prevMinInput.value) || 0
+                    diff = lastMin - prevMin || 10
+                }
+
+                // Calculate new max for the currently-infinite tier
+                const lastMin = parseFloat(minInput.value) || 0
+                const newMaxForLast = lastMin + diff
+
+                // Update the last tier's max (make it finite)
+                maxInput.value = newMaxForLast
+
+                // New tier starts after the updated max
+                newMin = type === 'quantity' ? newMaxForLast + 1 : newMaxForLast
+            } else if (maxInput && maxInput.value !== '') {
+                const lastMax = parseFloat(maxInput.value) || 0
+                newMin = type === 'quantity' ? lastMax + 1 : lastMax
+            }
+        } else if (existingRows.length === 0 && type === 'quantity') {
+            newMin = 1
+        }
+
+        let unitParam = unit;
+        let unit2Param = '';
+        if (['weight_volume', 'weight_dimension'].includes(type)) {
+            unitParam = weightUnit;
+            unit2Param = volUnit;
+        }
+        
+        const rowHtml = renderRangeRow(type, prefix, newIndex, { min: newMin }, tierValueType, tierValueMode, unitParam, unit2Param);
+        const temp = document.createElement('div')
+        temp.innerHTML = rowHtml
+        const placeholder = rangesContainer.querySelector('.empty-placeholder')
+        if (placeholder) placeholder.remove()
+        
+        rangesContainer.appendChild(temp.firstElementChild)
+    }
+    
+    if (e.target.closest('.remove-range-btn')) {
+        const row = e.target.closest('.range-row')
+        const container = row.closest('.ranges-container')
+        const calcContainer = row.closest('.calculation-rules-container');
+
+        if (calcContainer) {
+            clearAllTierErrors(calcContainer);
+        }
+
+        row.remove()
+
+        // Re-validate after removal (live validation)
+        if (calcContainer) {
+            const type = getTierType(calcContainer);
+            const ranges = getAllTierRanges(calcContainer, type);
+
+            // Validate continuity between remaining tiers
+            ranges.forEach((range, index) => {
+                if (index > 0) {
+                    const previousRange = ranges[index - 1];
+                    validateContinuity(range, previousRange, type, 'warning');
+                }
+            });
+        }
+
+        if (container.querySelectorAll('.range-row').length === 0) {
+            container.innerHTML = `<div class="empty-placeholder text-xs secondary-text italic text-center p-4 bg-[hsl(var(--muted))] rounded-lg border border-dashed border-default">${t('deliveryRules.noRange')}</div>`
+        }
+    }
+  })
+
+  document.getElementById("save-seller-rules").addEventListener("click", () => {
+    // TIER VALIDATION: Validate all tier-based forms before saving
+    if (!validateAllTierForms()) {
+      // Show error toast
+      const errorMessage = document.createElement('div');
+      errorMessage.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in';
+      errorMessage.textContent = t('validation.tier.fixErrorsBeforeSaving');
+      document.body.appendChild(errorMessage);
+
+      setTimeout(() => {
+        errorMessage.remove();
+      }, 5000);
+
+      return;
+    }
+
+    const currentRule = { seller }
+    const sameSelect = document.querySelector('.same-seller-select')
+    const copiedFromValue = sameSelect && sameSelect.value !== 'None' ? sameSelect.value : null
+    
+    if (copiedFromValue) {
+        currentRule.copiedFrom = copiedFromValue
+    } else {
+        const billingRadio = document.querySelector(`input[name="billing-method-${safeSellerId}"]:checked`)
+        currentRule.billingMethod = billingRadio ? billingRadio.value : 'global'
+        
+        if (currentRule.billingMethod === 'global') {
+            const globalCb = document.querySelector('.global-free-shipping-checkbox')
+            currentRule.globalFreeShipping = globalCb ? globalCb.checked : false
+            if (currentRule.globalFreeShipping) {
+                const globalInput = document.querySelector('.global-free-shipping-input')
+                currentRule.globalFreeShippingThreshold = parseFloat(globalInput.value) || 0
+            }
+            currentRule.calculationMethod = extractCalculationRule(`global_${safeSellerId}`, document)
+        } else if (currentRule.billingMethod === 'groups') {
+            currentRule.groups = []
+            document.querySelectorAll('.group-item').forEach((groupDiv, idx) => {
+                const name = groupDiv.querySelector('.group-name-input').value
+                const freeShipping = groupDiv.querySelector('.group-free-shipping-checkbox').checked
+                const freeThreshold = parseFloat(groupDiv.querySelector('.group-free-shipping-input').value) || 0
+                const productIds = Array.from(groupDiv.querySelectorAll('.group-product-checkbox:checked')).map(cb => cb.value)
+                const calcMethod = extractCalculationRule(`group_${safeSellerId}_${idx}`, groupDiv)
+                currentRule.groups.push({
+                    id: Date.now().toString() + Math.random().toString().slice(2,6),
+                    name, freeShipping, freeShippingThreshold: freeThreshold, productIds, calculationMethod: calcMethod
+                })
+            })
+        } else if (currentRule.billingMethod === 'free') {
+            currentRule.calculationMethod = { type: 'free' }
+        }
+        
+        if (session.importFeesEnabled) {
+            const customsFeeInput = document.querySelector('.customs-clearance-fees')
+            if (customsFeeInput) currentRule.customsClearanceFee = parseFloat(customsFeeInput.value) || 0
+        }
+    }
+
+    if (!session.deliveryRules) session.deliveryRules = []
+    const ruleIndex = session.deliveryRules.findIndex(r => r.seller === seller)
+    if (ruleIndex > -1) session.deliveryRules[ruleIndex] = currentRule
+    else session.deliveryRules.push(currentRule)
+
+    SidebarAPI.updateSession(currentSession, session).then((response) => {
+        sessions = response.sessions
+        currentRulesView = "list"
+        currentSellerEditing = null
+        renderApp()
+    })
+  })
+}
+
 function renderDeliveryRulesView() {
   const session = sessions.find((s) => s.id === currentSession)
   if (!session) {
@@ -2086,7 +5225,27 @@ function renderDeliveryRulesView() {
     return
   }
 
-  const getRule = (seller) => (session.deliveryRules || []).find(r => r.seller === seller) || {}
+  if (currentRulesView === "edit" && currentSellerEditing) {
+    renderSellerDeliveryRulesView(currentSellerEditing)
+    return
+  }
+
+  // Ensure all sellers have default delivery rules
+  const sellers = getUniqueSellers(session)
+  let hasNewRules = false
+  
+  sellers.forEach(seller => {
+    const created = ensureDefaultRule(session, seller)
+    if (created) {
+      hasNewRules = true
+    }
+  })
+
+  if (hasNewRules) {
+    SidebarAPI.updateSession(currentSession, session).then((response) => {
+      sessions = response.sessions
+    })
+  }
 
   app.innerHTML = `
     <div class="mx-4 pb-8">
@@ -2117,7 +5276,7 @@ function renderDeliveryRulesView() {
             step="0.01"
             min="0"
             max="100"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary border-transparent"
           >
         </div>
 
@@ -2160,83 +5319,18 @@ function renderDeliveryRulesView() {
       ` : ''}
 
       <div class="space-y-4 seller-settings">
-        ${getUniqueSellers(session)
-          .map(
-            (seller) => {
-              const rule = getRule(seller)
-              const copiedFrom = rule.copiedFrom || 'None'
-              const isFree = rule.type === 'free'
-              const type = rule.type === 'free' ? 'fixed' : (rule.type || 'fixed') // Default to fixed if free or undefined
-              
-              return `
-          <div class="mb-4 seller-card card-bg rounded-xl shadow-md p-4 border border-default">
-            <h4 class="text-lg font-medium card-text mb-3 truncate border-b pb-2">${seller}</h4>
-
-            <div class="mb-4">
-              <label class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.sameSellerAs")}</label>
-              <select class="same-seller-select w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" data-seller="${seller}">
-                <option value="None" ${copiedFrom === 'None' ? 'selected' : ''}>${t("deliveryRules.none")}</option>
-                ${getUniqueSellers(session).filter(s => s !== seller).map(s2 => `<option value="${s2}" ${copiedFrom === s2 ? 'selected' : ''}>${s2}</option>`).join('')}
-              </select>
-            </div>
-
-            <div class="mb-4 flex items-center justify-between free-delivery-row" style="display: ${copiedFrom !== 'None' ? 'none' : 'flex'}">
-              <label class="text-sm font-medium secondary-text">${t("deliveryRules.freeDelivery")}</label>
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" class="free-delivery-toggle sr-only peer" data-seller="${seller}" ${isFree ? 'checked' : ''}>
-                <div class="toggle-switch"></div>
-              </label>
-            </div>
-
-            <div class="mb-4 delivery-type-row" style="display: ${copiedFrom !== 'None' || isFree ? 'none' : 'block'}">
-              <label class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.pricingType")}</label>
-              <select class="delivery-type w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" data-seller="${seller}">
-                <option value="fixed" ${type === 'fixed' ? 'selected' : ''}>${t("deliveryRules.typeFixed")}</option>
-                <option value="first-item" ${type === 'first-item' ? 'selected' : ''}>${t("deliveryRules.typeFirstItem")}</option>
-                <option value="free-threshold" ${type === 'free-threshold' ? 'selected' : ''}>${t("deliveryRules.typeFreeThreshold")}</option>
-              </select>
-            </div>
-
-            <div id="delivery-options-${seller.replace(/\s+/g, "-")}" style="display: ${copiedFrom !== 'None' || isFree ? 'none' : 'block'}">
-              <div class="option-block option-fixed fixed-price mb-3" data-option="fixed" style="display: none;">
-                <!-- No extra fields for fixed -->
-              </div>
-
-              <div class="option-block option-first first-item mb-3" data-option="first-item" style="display: ${type === 'first-item' ? 'block' : 'none'};">
-                <label class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.firstItemPrice")}</label>
-                <input type="number" class="first-item-price w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" data-seller="${seller}" step="0.01" min="0" value="${rule.firstItemPrice || ''}">
-              </div>
-
-              <div class="option-block option-first-additional first-item mb-3" data-option="first-item-additional" style="display: ${type === 'first-item' ? 'block' : 'none'};">
-                <label class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.followingItemsPrice")}</label>
-                <input type="number" class="following-items-price w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" data-seller="${seller}" step="0.01" min="0" value="${rule.additionalItemsPrice || ''}">
-              </div>
-
-              <div class="option-block option-free free-threshold mb-3" data-option="free-threshold" style="display: ${type === 'free-threshold' || isFree ? 'block' : 'none'};">
-                <label class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.freeDeliveryOver")}</label>
-                <input type="number" class="free-threshold-value w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" data-seller="${seller}" step="0.01" min="0" value="${rule.threshold || ''}">
-              </div>
-            </div>
-
-            ${session.importFeesEnabled ? `
-            <div class="mb-4" style="display: ${copiedFrom !== 'None' ? 'none' : 'block'}">
-              <label class="block text-sm font-medium secondary-text mb-1">
-                ${t("deliveryRules.customsClearanceFees")}
-                <span class="icon icon-help w-4 h-4 ml-1 cursor-help" title="${t("deliveryRules.customsClearanceFeesHelp")}"></span>
-              </label>
-              <input type="number" class="customs-clearance-fees w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" data-seller="${seller}" step="0.01" min="0" value="${rule.customsClearanceFee || 0}">
-            </div>
-            ` : ''}
-          </div>
-        `
-            }
-          )
-          .join("")}
+        <h3 class="text-lg font-semibold card-text mb-2 px-1">${t("deliveryRules.sellerRules")}</h3>
+        ${getUniqueSellers(session).map(seller => {
+          const rule = getRule(session, seller)
+          return renderSellerRecapCard(session, seller, rule)
+        }).join('')}
       </div>
 
-      <button id="save-rules-button" class="w-full mt-6 flex items-center justify-center space-x-2 cursor-pointer primary-bg primary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm">
-        <span class="text-lg font-medium">${t("deliveryRules.saveRules")}</span>
+      ${session.importFeesEnabled ? `
+      <button id="save-customs-button" class="w-full mt-6 flex items-center justify-center space-x-2 cursor-pointer primary-bg primary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm">
+        <span class="text-lg font-medium">${t("common.save")}</span>
       </button>
+      ` : ''}
     </div>
   `
 
@@ -2245,7 +5339,14 @@ function renderDeliveryRulesView() {
     renderApp()
   })
 
-  // Customs category event listeners
+  document.querySelectorAll(".edit-seller-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentSellerEditing = btn.dataset.seller
+      currentRulesView = "edit"
+      renderApp()
+    })
+  })
+
   const addCategoryBtn = document.getElementById("add-category-btn")
   if (addCategoryBtn) {
     addCategoryBtn.addEventListener("click", () => {
@@ -2270,140 +5371,9 @@ function renderDeliveryRulesView() {
     })
   })
 
-
-  document.querySelectorAll('.same-seller-select').forEach((sel) => {
-    sel.addEventListener('change', (e) => {
-      const seller = e.target.dataset.seller
-      const value = e.target.value
-
-      const sellerCard = sel.closest('.seller-card')
-      const freeRow = sellerCard.querySelector('.free-delivery-row')
-      const deliveryRow = sellerCard.querySelector('.delivery-type-row')
-      const optionsContainer = document.getElementById(`delivery-options-${seller.replace(/\s+/g, "-")}`)
-
-      if (value && value !== 'None') {
-        // Hide controls
-        if (freeRow) freeRow.style.display = 'none'
-        if (deliveryRow) deliveryRow.style.display = 'none'
-        if (optionsContainer) optionsContainer.style.display = 'none'
-      } else {
-        // Show controls
-        if (freeRow) freeRow.style.display = 'flex'
-        
-        // Check if free delivery is enabled to decide visibility of other controls
-        const freeToggle = sellerCard.querySelector('.free-delivery-toggle')
-        if (freeToggle && !freeToggle.checked) {
-          if (deliveryRow) deliveryRow.style.display = 'block'
-          if (optionsContainer) optionsContainer.style.display = 'block'
-        }
-      }
-    })
-  })
-
-  // Free delivery toggle behavior
-  document.querySelectorAll('.free-delivery-toggle').forEach((toggle) => {
-    toggle.addEventListener('change', (e) => {
-      const seller = e.target.dataset.seller
-      const checked = e.target.checked
-      const optionsContainer = document.getElementById(`delivery-options-${seller.replace(/\s+/g, "-")}`)
-      const deliveryRow = document.querySelector(`.delivery-type[data-seller="${seller}"]`)
-      
-      if (!optionsContainer || !deliveryRow) return
-
-      if (checked) {
-        if (deliveryRow) deliveryRow.parentElement.style.display = 'none'
-        if (optionsContainer) optionsContainer.style.display = 'none'
-      } else {
-        if (deliveryRow) deliveryRow.parentElement.style.display = 'block'
-        if (optionsContainer) {
-          optionsContainer.style.display = 'block'
-          // Trigger change on delivery type to show correct fields
-          const typeSelect = document.querySelector(`.delivery-type[data-seller="${seller}"]`)
-          if (typeSelect) typeSelect.dispatchEvent(new Event('change'))
-        }
-      }
-    })
-  })
-
-  document.querySelectorAll(".delivery-type").forEach((select) => {
-    select.addEventListener("change", (e) => {
-      const seller = e.target.dataset.seller
-      const optionsContainer = document.getElementById(`delivery-options-${seller.replace(/\s+/g, "-")}`)
-      if (!optionsContainer) return
-
-      // Hide all option blocks
-      optionsContainer.querySelectorAll('.option-block').forEach((el) => {
-        el.style.display = 'none'
-      })
-
-      // Show selected option blocks
-      const selectedType = e.target.value
-      if (selectedType === 'fixed') {
-        // 'Addition of per-item delivery price' has no extra fields to display
-      } else if (selectedType === 'free-threshold') {
-        optionsContainer.querySelectorAll('.option-block[data-option="free-threshold"]').forEach((el) => (el.style.display = 'block'))
-      } else if (selectedType === 'first-item') {
-        optionsContainer.querySelectorAll('.option-block[data-option="first-item"]').forEach((el) => (el.style.display = 'block'))
-        optionsContainer.querySelectorAll('.option-block[data-option="first-item-additional"]').forEach((el) => (el.style.display = 'block'))
-      }
-    })
-  })
-
-  document.getElementById("save-rules-button").addEventListener("click", () => {
-    const deliveryRules = []
-
-    getUniqueSellers(session).forEach((seller) => {
-      const sameSelect = document.querySelector(`.same-seller-select[data-seller="${seller}"]`)
-      const copiedFrom = sameSelect && sameSelect.value && sameSelect.value !== 'None' ? sameSelect.value : null
-      
-      const rule = { seller }
-      if (copiedFrom) {
-        rule.copiedFrom = copiedFrom
-      }
-
-      const effectiveSeller = copiedFrom || seller
-
-      const freeToggle = document.querySelector(`.free-delivery-toggle[data-seller="${effectiveSeller}"]`)
-      const isFree = freeToggle ? freeToggle.checked : false
-
-      if (isFree) {
-        rule.type = 'free'
-        rule.threshold = 0
-      } else {
-        const typeSelect = document.querySelector(`.delivery-type[data-seller="${effectiveSeller}"]`)
-        const type = typeSelect ? typeSelect.value : 'fixed'
-        rule.type = type
-
-        if (type === 'fixed') {
-          // No extra fields
-        } else if (type === 'first-item') {
-          const first = document.querySelector(`.first-item-price[data-seller="${effectiveSeller}"]`)
-          const additional = document.querySelector(`.following-items-price[data-seller="${effectiveSeller}"]`)
-          rule.firstItemPrice = Number.parseFloat(first && first.value) || 0
-          rule.additionalItemsPrice = Number.parseFloat(additional && additional.value) || 0
-        } else if (type === 'free-threshold') {
-          const threshold = document.querySelector(`.free-threshold-value[data-seller="${effectiveSeller}"]`)
-          rule.threshold = Number.parseFloat(threshold && threshold.value) || 0
-        }
-      }
-
-      // Collect customs clearance fee if enabled
-      const customsFeeInput = document.querySelector(`.customs-clearance-fees[data-seller="${effectiveSeller}"]`)
-      if (customsFeeInput) {
-        rule.customsClearanceFee = Number.parseFloat(customsFeeInput.value) || 0
-      }
-      
-      if (copiedFrom) {
-        rule.copiedFrom = copiedFrom
-      }
-
-      deliveryRules.push(rule)
-    })
-
-    session.deliveryRules = deliveryRules
-
-    // Save defaultVAT if customs tax is enabled
-    if (session.importFeesEnabled) {
+  const saveCustomsBtn = document.getElementById("save-customs-button")
+  if (saveCustomsBtn) {
+    saveCustomsBtn.addEventListener("click", () => {
       const defaultVATInput = document.getElementById("default-vat")
       if (defaultVATInput) {
         const defaultVATPercent = parseFloat(defaultVATInput.value)
@@ -2413,24 +5383,23 @@ function renderDeliveryRulesView() {
           session.defaultVAT = null
         }
       }
-    }
 
-    SidebarAPI.updateSession(currentSession, session).then((response) => {
-      sessions = response.sessions
-      currentView = "products"
-      renderApp()
+      SidebarAPI.updateSession(currentSession, session).then((response) => {
+        sessions = response.sessions
+        currentView = "products"
+        renderApp()
+      })
     })
-  })
+  }
 }
 
-// Customs Category Modals
 function showNewCustomsCategoryModal() {
   const session = sessions.find(s => s.id === currentSession)
-  // Get current defaultVAT value from input field if it exists (already in percentage)
+  // Get current defaultVAT value from input field if it exists
   const defaultVATInput = document.getElementById("default-vat")
   let defaultVATPercentage = ''
   if (defaultVATInput && defaultVATInput.value) {
-    // Input field exists and has a value - it's already in percentage format
+    // Input field exists and has a value
     defaultVATPercentage = defaultVATInput.value
   } else if (session.defaultVAT) {
     // No input value, use session value and convert from decimal to percentage
@@ -2448,7 +5417,7 @@ function showNewCustomsCategoryModal() {
             type="text" 
             id="category-name" 
             placeholder="${t("modals.enterCategoryName")}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -2460,7 +5429,7 @@ function showNewCustomsCategoryModal() {
             step="0.01"
             min="0"
             max="100"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -2473,7 +5442,7 @@ function showNewCustomsCategoryModal() {
             step="0.01"
             min="0"
             max="100"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -2559,7 +5528,7 @@ function showEditCustomsCategoryModal(category) {
             type="text" 
             id="category-name" 
             value="${category.name}"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -2572,7 +5541,7 @@ function showEditCustomsCategoryModal(category) {
             step="0.01"
             min="0"
             max="100"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -2585,7 +5554,7 @@ function showEditCustomsCategoryModal(category) {
             step="0.01"
             min="0"
             max="100"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
         </div>
 
@@ -2885,7 +5854,7 @@ function showNewAlternativeGroupModal() {
         
         <div class="mb-4">
           <label class="block text-sm font-medium secondary-text mb-1">${t("alternatives.groupName")}</label>
-          <input type="text" id="group-name" placeholder="${t("alternatives.groupNamePlaceholder")}" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+          <input type="text" id="group-name" placeholder="${t("alternatives.groupNamePlaceholder")}" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
         </div>
 
         ${session.manageQuantity !== false ? `
@@ -2936,7 +5905,7 @@ function showNewAlternativeGroupModal() {
           const initialProd = initialProducts.find(ip => ip.productId === p.id)
           return `
           <div class="flex items-center gap-2">
-            <input type="checkbox" id="${optionId}-prod-${p.id}" value="${p.id}" class="product-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-gray-500" ${initialProd ? 'checked' : ''}>
+            <input type="checkbox" id="${optionId}-prod-${p.id}" value="${p.id}" class="product-checkbox h-4 w-4 accent-primary border-default rounded focus:ring-primary" ${initialProd ? 'checked' : ''}>
             <label for="${optionId}-prod-${p.id}" class="flex-1 text-sm secondary-text truncate">${p.name}</label>
             ${session.manageQuantity !== false ? `
             <input type="number" id="${optionId}-qty-${p.id}" min="1" step="1" value="${initialProd ? initialProd.quantity : 1}" class="qty-input w-16 px-2 py-1 border border-default input-bg card-text rounded text-sm ${initialProd ? '' : 'hidden'}">
@@ -3082,7 +6051,7 @@ function showEditAlternativeGroupModal(group) {
         
         <div class="mb-4">
           <label class="block text-sm font-medium secondary-text mb-1">${t("alternatives.groupName")}</label>
-          <input type="text" id="group-name" value="${group.name}" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500">
+          <input type="text" id="group-name" value="${group.name}" class="w-full px-4 py-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
         </div>
 
         ${session.manageQuantity !== false ? `
@@ -3133,7 +6102,7 @@ function showEditAlternativeGroupModal(group) {
           const initialProd = initialProducts.find(ip => ip.productId === p.id)
           return `
           <div class="flex items-center gap-2">
-            <input type="checkbox" id="${optionId}-prod-${p.id}" value="${p.id}" class="product-checkbox h-4 w-4 accent-gray-800 border-default rounded focus:ring-gray-500" ${initialProd ? 'checked' : ''}>
+            <input type="checkbox" id="${optionId}-prod-${p.id}" value="${p.id}" class="product-checkbox h-4 w-4 accent-primary border-default rounded focus:ring-primary" ${initialProd ? 'checked' : ''}>
             <label for="${optionId}-prod-${p.id}" class="flex-1 text-sm secondary-text truncate">${p.name}</label>
             ${session.manageQuantity !== false ? `
             <input type="number" id="${optionId}-qty-${p.id}" min="1" step="1" value="${initialProd ? initialProd.quantity : 1}" class="qty-input w-16 px-2 py-1 border border-default input-bg card-text rounded text-sm ${initialProd ? '' : 'hidden'}">
