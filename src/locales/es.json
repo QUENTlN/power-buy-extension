@@ -48,6 +48,7 @@
         "deliveryRules": "Reglas de entrega",
         "editDeliveryRules": "Editar reglas de entrega",
         "manageAlternatives": "Gestionar alternativas",
+        "importFees": "Tasas de importación",
         "quantity": "Cantidad",
         "confirmDelete": "¿Está seguro de que desea eliminar este producto? También se eliminarán todas las páginas asociadas.",
         "deleteButton": "Eliminar producto"

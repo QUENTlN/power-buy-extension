@@ -167,6 +167,7 @@ body {
   .icon-close { mask-image: url('../icons/close.svg'); -webkit-mask-image: url('../icons/close.svg'); }
   .icon-help { mask-image: url('../icons/help.svg'); -webkit-mask-image: url('../icons/help.svg'); }
   .icon-info { mask-image: url('../icons/info.svg'); -webkit-mask-image: url('../icons/info.svg'); }
+  .icon-customs { mask-image: url('../icons/customs.svg'); -webkit-mask-image: url('../icons/customs.svg'); }
 
   /* Validation styles */
   .error-text {

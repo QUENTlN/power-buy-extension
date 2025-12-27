@@ -48,6 +48,7 @@
         "deliveryRules": "Règles de livraison",
         "editDeliveryRules": "Modifier les règles de livraison",
         "manageAlternatives": "Gérer les alternatives",
+        "importFees": "Frais d'importation",
         "quantity": "Quantité",
         "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce produit ? Toutes les pages associées seront également supprimées.",
         "deleteButton": "Supprimer le produit"
@@ -220,6 +221,9 @@
         "confirmDeleteCategory": "Êtes-vous sûr de vouloir supprimer cette catégorie douanière ?",
         "customsClearanceFees": "Frais de dédouanement",
         "customsClearanceFeesHelp": "Ces frais sont pour certains services de livraison qui facturent la gestion de la déclaration en douane et l'avance des taxes applicables."
+    },
+    "importFees": {
+        "subtitle": "Configurez les taux de TVA et de droits de douane pour les produits importés."
     },
     "scraping": {
         "title": "Ajouter au produit",

@@ -58,6 +58,9 @@ function renderApp() {
     case "alternatives":
       renderAlternativesView()
       break
+    case "importFees":
+      renderImportFeesView()
+      break
     default:
       renderSessionsView()
   }
@@ -229,6 +232,15 @@ function renderProductsView() {
         </button>
       </div>
 
+      ${session.importFeesEnabled ? `
+      <div class="flex space-x-4 mt-4">
+        <button id="import-fees-button" class="flex-1 flex items-center justify-center space-x-2 cursor-pointer secondary-bg secondary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm border border-default">
+          <span class="icon icon-customs h-5 w-5"></span>
+          <span class="text-lg font-medium">${t("products.importFees")}</span>
+        </button>
+      </div>
+      ` : ''}
+
       <div class="flex space-x-4 my-4">
         <button id="optimize-button" class="flex-1 flex items-center justify-center space-x-2 cursor-pointer primary-bg primary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm">
           <span class="icon icon-optimize h-5 w-5"></span>
@@ -266,6 +278,13 @@ function renderProductsView() {
     Store.state.currentView = "alternatives"
     renderApp()
   })
+
+  if (session.importFeesEnabled) {
+    document.getElementById("import-fees-button").addEventListener("click", () => {
+      Store.state.currentView = "importFees"
+      renderApp()
+    })
+  }
 
   document.querySelectorAll(".product-item").forEach((item) => {
     item.addEventListener("click", (e) => {
@@ -5225,63 +5244,6 @@ function renderDeliveryRulesView() {
 
       <p class="text-sm muted-text mb-6">${t("deliveryRules.subtitle")}</p>
 
-      ${session.importFeesEnabled ? `
-      <!-- Customs Tax Configuration -->
-      <div class="mb-8 card-bg rounded-xl shadow-md p-6 border border-default">
-        <h2 class="text-xl font-semibold card-text mb-4">${t("deliveryRules.importFeeSection")}</h2>
-        
-        <!-- Default VAT Rate -->
-        <div class="mb-6">
-          <label for="default-vat" class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.defaultVAT")} (%)</label>
-          <input 
-            type="number" 
-            id="default-vat" 
-            value="${session.defaultVAT ? (session.defaultVAT * 100) : ''}"
-            step="0.01"
-            min="0"
-            max="100"
-            class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary border-transparent"
-          >
-        </div>
-
-        <!-- Product Categories -->
-        <div class="mb-4">
-          <h3 class="text-lg font-medium card-text mb-3">${t("deliveryRules.productCategories")}</h3>
-          
-          ${(session.customsCategories && session.customsCategories.length > 0) ? `
-          <div class="space-y-2 mb-4">
-            ${session.customsCategories.map(cat => `
-              <div class="flex items-center justify-between p-3 secondary-bg rounded-lg border border-default">
-                <div class="flex-1">
-                  <p class="font-medium card-text">${cat.name}</p>
-                  <p class="text-sm muted-text">
-                    ${t("deliveryRules.dutyRate")}: ${(cat.dutyRate * 100)}%<br>
-                    ${t("deliveryRules.vatRate")}: ${(cat.vatRate * 100)}%
-                  </p>
-                </div>
-                <div class="flex space-x-2">
-                  <button class="muted-text p-1 cursor-pointer edit-category-btn" data-id="${cat.id}">
-                    <span class="icon icon-edit h-5 w-5"></span>
-                  </button>
-                  <button class="muted-text p-1 cursor-pointer delete-category-btn" data-id="${cat.id}">
-                    <span class="icon icon-delete h-5 w-5"></span>
-                  </button>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-          ` : `
-          <p class="text-sm muted-text mb-4">${t("deliveryRules.noCategoriesYet")}</p>
-          `}
-
-          <button id="add-category-btn" class="w-full flex items-center justify-center space-x-2 cursor-pointer secondary-bg secondary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm border border-default">
-            <span class="icon icon-plus h-5 w-5"></span>
-            <span class="text-base font-medium">${t("deliveryRules.addCategory")}</span>
-          </button>
-        </div>
-      </div>
-      ` : ''}
-
       <div class="space-y-4 seller-settings">
         <h3 class="text-lg font-semibold card-text mb-2 px-1">${t("deliveryRules.sellerRules")}</h3>
         ${getUniqueSellers(session).map(seller => {
@@ -5289,12 +5251,6 @@ function renderDeliveryRulesView() {
           return renderSellerRecapCard(session, seller, rule)
         }).join('')}
       </div>
-
-      ${session.importFeesEnabled ? `
-      <button id="save-customs-button" class="w-full mt-6 flex items-center justify-center space-x-2 cursor-pointer primary-bg primary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm">
-        <span class="text-lg font-medium">${t("common.save")}</span>
-      </button>
-      ` : ''}
     </div>
   `
 
@@ -5308,13 +5264,100 @@ function renderDeliveryRulesView() {
       Store.setState({ currentSellerEditing: btn.dataset.seller, currentRulesView: 'edit' })
     })
   })
+}
 
-  const addCategoryBtn = document.getElementById("add-category-btn")
-  if (addCategoryBtn) {
-    addCategoryBtn.addEventListener("click", () => {
-      showNewCustomsCategoryModal()
-    })
+function renderImportFeesView() {
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
+  if (!session) {
+    Store.state.currentView = "sessions"
+    renderApp()
+    return
   }
+
+  if (!session.importFeesEnabled) {
+    Store.state.currentView = "products"
+    renderApp()
+    return
+  }
+
+  app.innerHTML = `
+    <div class="mx-4 pb-8">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-3">
+        <div class="flex items-center space-x-3">
+          <button class="muted-text p-2 cursor-pointer" id="back-button">
+            <span class="icon icon-back h-8 w-8"></span>
+          </button>
+          <h1 class="text-2xl pl-4 font-semibold card-text">${t("deliveryRules.importFeeSection")}</h1>
+        </div>
+      </div>
+
+      <p class="text-sm muted-text mb-6">${t("importFees.subtitle")}</p>
+
+      <!-- Default VAT Rate -->
+      <div class="mb-6 card-bg rounded-xl shadow-md p-6 border border-default">
+        <label for="default-vat" class="block text-sm font-medium secondary-text mb-1">${t("deliveryRules.defaultVAT")} (%)</label>
+        <input
+          type="number"
+          id="default-vat"
+          value="${session.defaultVAT ? (session.defaultVAT * 100) : ''}"
+          step="0.01"
+          min="0"
+          max="100"
+          class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary border-transparent"
+        >
+      </div>
+
+      <!-- Product Categories -->
+      <div class="mb-6 card-bg rounded-xl shadow-md p-6 border border-default">
+        <h3 class="text-lg font-medium card-text mb-3">${t("deliveryRules.productCategories")}</h3>
+
+        ${(session.customsCategories && session.customsCategories.length > 0) ? `
+        <div class="space-y-2 mb-4">
+          ${session.customsCategories.map(cat => `
+            <div class="flex items-center justify-between p-3 secondary-bg rounded-lg border border-default">
+              <div class="flex-1">
+                <p class="font-medium card-text">${cat.name}</p>
+                <p class="text-sm muted-text">
+                  ${t("deliveryRules.dutyRate")}: ${(cat.dutyRate * 100)}%<br>
+                  ${t("deliveryRules.vatRate")}: ${(cat.vatRate * 100)}%
+                </p>
+              </div>
+              <div class="flex space-x-2">
+                <button class="muted-text p-1 cursor-pointer edit-category-btn" data-id="${cat.id}">
+                  <span class="icon icon-edit h-5 w-5"></span>
+                </button>
+                <button class="muted-text p-1 cursor-pointer delete-category-btn" data-id="${cat.id}">
+                  <span class="icon icon-delete h-5 w-5"></span>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ` : `
+        <p class="text-sm muted-text mb-4">${t("deliveryRules.noCategoriesYet")}</p>
+        `}
+
+        <button id="add-category-btn" class="w-full flex items-center justify-center space-x-2 cursor-pointer secondary-bg secondary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm border border-default">
+          <span class="icon icon-plus h-5 w-5"></span>
+          <span class="text-base font-medium">${t("deliveryRules.addCategory")}</span>
+        </button>
+      </div>
+
+      <button id="save-import-fees-button" class="w-full flex items-center justify-center space-x-2 cursor-pointer primary-bg primary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm">
+        <span class="text-lg font-medium">${t("common.save")}</span>
+      </button>
+    </div>
+  `
+
+  document.getElementById("back-button").addEventListener("click", () => {
+    Store.state.currentView = "products"
+    renderApp()
+  })
+
+  document.getElementById("add-category-btn").addEventListener("click", () => {
+    showNewCustomsCategoryModal()
+  })
 
   document.querySelectorAll(".edit-category-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -5333,24 +5376,21 @@ function renderDeliveryRulesView() {
     })
   })
 
-  const saveCustomsBtn = document.getElementById("save-customs-button")
-  if (saveCustomsBtn) {
-    saveCustomsBtn.addEventListener("click", () => {
-      const defaultVATInput = document.getElementById("default-vat")
-      if (defaultVATInput) {
-        const defaultVATPercent = parseFloat(defaultVATInput.value)
-        if (!isNaN(defaultVATPercent) && defaultVATPercent >= 0 && defaultVATPercent <= 100) {
-          session.defaultVAT = defaultVATPercent / 100
-        } else {
-          session.defaultVAT = null
-        }
+  document.getElementById("save-import-fees-button").addEventListener("click", () => {
+    const defaultVATInput = document.getElementById("default-vat")
+    if (defaultVATInput) {
+      const defaultVATPercent = parseFloat(defaultVATInput.value)
+      if (!isNaN(defaultVATPercent) && defaultVATPercent >= 0 && defaultVATPercent <= 100) {
+        session.defaultVAT = defaultVATPercent / 100
+      } else {
+        session.defaultVAT = null
       }
+    }
 
-      Store.sync(SidebarAPI.updateSession(Store.state.currentSession, session)).then(() => {
-        Store.navigate('products')
-      })
+    Store.sync(SidebarAPI.updateSession(Store.state.currentSession, session)).then(() => {
+      Store.navigate('products')
     })
-  }
+  })
 }
 
 function showNewCustomsCategoryModal() {
