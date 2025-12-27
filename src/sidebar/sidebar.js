@@ -1,23 +1,25 @@
 const app = document.getElementById("app")
 
 async function init() {
+  // Subscribe renderApp to Store changes (auto re-render on state change)
+  Store.subscribe(() => renderApp())
+
   browser.storage.local.get(["darkMode", "currency"]).then(async (settings) => {
     if (settings.darkMode) {
       document.documentElement.classList.add("dark")
     } else {
       document.documentElement.classList.remove("dark")
     }
-    
+
     const currencyCode = settings.currency || DEFAULT_CURRENCY
     const currency = CURRENCIES.find(c => c.code === currencyCode)
-    if (currency) currentCurrencySymbol = currency.symbol
-    
+    if (currency) Store.setState({ currency: currency.symbol }, true)
+
     await initI18n()
-    
+
     SidebarAPI.getSessions().then((response) => {
-      sessions = response.sessions
-      currentSession = response.currentSession
-      renderApp()
+      Store.init(response)
+      renderApp() // Initial render
     })
   })
 
@@ -27,7 +29,7 @@ async function init() {
       browser.windows.getCurrent().then(currentWindow => {
         browser.windows.getLastFocused().then(focusedWindow => {
           if (currentWindow.id === focusedWindow.id) {
-            scrapedData = message.data
+            Store.setState({ scrapedData: message.data }, true)
             showScrapedDataModal()
           }
         });
@@ -37,7 +39,7 @@ async function init() {
 }
 
 function renderApp() {
-  switch (currentView) {
+  switch (Store.state.currentView) {
     case "sessions":
       renderSessionsView()
       break
@@ -79,7 +81,7 @@ function renderSessionsView() {
 
       <!-- Session Cards -->
       <div class="space-y-4">
-        ${sessions.map(session => `
+        ${Store.state.sessions.map(session => `
           <div class="card-bg rounded-xl shadow-md p-4 session-item" data-id="${session.id}">
             <div class="flex justify-between items-center">
               <div class="flex-1 min-w-0 mr-4 cursor-pointer">
@@ -115,7 +117,7 @@ function renderSessionsView() {
   })
 
   document.getElementById("settings-button").addEventListener("click", () => {
-    currentView = "settings"
+    Store.state.currentView = "settings"
     renderApp()
   })
 
@@ -127,10 +129,9 @@ function renderSessionsView() {
     item.addEventListener("click", (e) => {
       if (!e.target.closest(".edit-button") && !e.target.closest(".delete-button") && !e.target.closest(".export-button")) {
         const sessionId = item.dataset.id
-        currentSession = sessionId
-        SidebarAPI.setCurrentSession(sessionId)
-        currentView = "products"
-        renderApp()
+        SidebarAPI.setCurrentSession(sessionId) // Persist to background
+        Store.navigate('products', { currentSession: sessionId })
+        // renderApp() called automatically by Store
       }
     })
   })
@@ -139,7 +140,7 @@ function renderSessionsView() {
     button.addEventListener("click", (e) => {
       e.stopPropagation()
       const sessionId = button.dataset.id
-      const session = sessions.find((s) => s.id === sessionId)
+      const session = Store.state.sessions.find((s) => s.id === sessionId)
       exportSession(session)
     })
   })
@@ -148,7 +149,7 @@ function renderSessionsView() {
     button.addEventListener("click", (e) => {
       e.stopPropagation()
       const sessionId = button.dataset.id
-      const session = sessions.find((s) => s.id === sessionId)
+      const session = Store.state.sessions.find((s) => s.id === sessionId)
       showEditSessionModal(session)
     })
   })
@@ -163,9 +164,9 @@ function renderSessionsView() {
 }
 
 function renderProductsView() {
-  const session = sessions.find((s) => s.id === currentSession)
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
   if (!session) {
-    currentView = "sessions"
+    Store.state.currentView = "sessions"
     renderApp()
     return
   }
@@ -238,7 +239,7 @@ function renderProductsView() {
   `
 
   document.getElementById("back-button").addEventListener("click", () => {
-    currentView = "sessions"
+    Store.state.currentView = "sessions"
     renderApp()
   })
 
@@ -247,7 +248,7 @@ function renderProductsView() {
   })
 
   document.getElementById("edit-rules-button").addEventListener("click", () => {
-    currentView = "deliveryRules"
+    Store.state.currentView = "deliveryRules"
     renderApp()
   })
 
@@ -262,7 +263,7 @@ function renderProductsView() {
   })
 
   document.getElementById("manage-alternatives-button").addEventListener("click", () => {
-    currentView = "alternatives"
+    Store.state.currentView = "alternatives"
     renderApp()
   })
 
@@ -270,8 +271,8 @@ function renderProductsView() {
     item.addEventListener("click", (e) => {
       if (!e.target.closest(".edit-button") && !e.target.closest(".delete-button")) {
         const productId = item.dataset.id
-        currentProduct = productId
-        currentView = "pages"
+        Store.state.currentProduct = productId
+        Store.state.currentView = "pages"
         renderApp()
       }
     })
@@ -296,11 +297,11 @@ function renderProductsView() {
 }
 
 function renderPagesView() {
-  const session = sessions.find((s) => s.id === currentSession)
-  const product = session.products.find((p) => p.id === currentProduct)
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
+  const product = session.products.find((p) => p.id === Store.state.currentProduct)
 
   if (!session || !product) {
-    currentView = "products"
+    Store.state.currentView = "products"
     renderApp()
     return
   }
@@ -435,7 +436,7 @@ function renderPagesView() {
   `
 
   document.getElementById("back-button").addEventListener("click", () => {
-    currentView = "products"
+    Store.state.currentView = "products"
     renderApp()
   })
 
@@ -465,8 +466,8 @@ function renderPagesView() {
   document.querySelectorAll(".edit-page-button").forEach((button) => {
     button.addEventListener("click", () => {
       const pageId = button.dataset.id
-      const session = sessions.find((s) => s.id === currentSession)
-      const product = session.products.find((p) => p.id === currentProduct)
+      const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
+      const product = session.products.find((p) => p.id === Store.state.currentProduct)
       const page = product.pages.find((p) => p.id === pageId)
       showEditPageModal(page)
     })
@@ -475,7 +476,7 @@ function renderPagesView() {
   document.querySelectorAll(".edit-bundle-button").forEach((button) => {
     button.addEventListener("click", () => {
       const bundleId = button.dataset.id
-      const session = sessions.find((s) => s.id === currentSession)
+      const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
       const bundle = session.bundles.find((b) => b.id === bundleId)
       showEditBundleModal(bundle)
     })
@@ -576,7 +577,7 @@ function renderSettingsView() {
     `
 
     document.getElementById("back-button").addEventListener("click", () => {
-      currentView = "sessions"
+      Store.state.currentView = "sessions"
       renderApp()
     })
 
@@ -601,7 +602,7 @@ function renderSettingsView() {
         })
         .then(async () => {
           const c = CURRENCIES.find(curr => curr.code === currency)
-          if (c) currentCurrencySymbol = c.symbol
+          if (c) Store.setState({ currency: c.symbol }, true)
           
           if (darkMode) {
             document.documentElement.classList.add("dark")
@@ -613,7 +614,7 @@ function renderSettingsView() {
             await setLanguage(language)
           }
 
-          currentView = "sessions"
+          Store.state.currentView = "sessions"
           renderApp()
         })
     })
@@ -717,7 +718,7 @@ function showNewSessionModal() {
     const manageDimension = document.getElementById("manage-dimension").checked
     const manageDistance = document.getElementById("manage-distance").checked
     
-    if (sessions.some(s => s.name === name)) {
+    if (Store.state.sessions.some(s => s.name === name)) {
       showFieldError('session-name', t("sessions.sessionExists"))
       return
     }
@@ -732,11 +733,9 @@ function showNewSessionModal() {
       manageDistance,
     }
 
-    SidebarAPI.createSession(session).then((response) => {
-      sessions = response.sessions
-      currentSession = response.currentSession
+    Store.sync(SidebarAPI.createSession(session)).then(() => {
       closeModal()
-      renderApp()
+      // renderApp() called automatically by Store
     })
   }
 
@@ -877,10 +876,8 @@ function showEditSessionModal(session) {
     updatedSession.manageDimension = manageDimension
     updatedSession.manageDistance = manageDistance
 
-    SidebarAPI.updateSession(session.id, updatedSession).then((response) => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.updateSession(session.id, updatedSession)).then(() => {
       closeModal()
-      renderApp()
     })
   }
 
@@ -932,17 +929,15 @@ function showDeleteSessionModal(sessionId) {
   })
 
   document.getElementById("delete-button").addEventListener("click", () => {
-    SidebarAPI.deleteSession(sessionId).then((response) => {
-      sessions = response.sessions
-      currentSession = response.currentSession
+    Store.sync(SidebarAPI.deleteSession(sessionId)).then(() => {
       document.body.removeChild(modal)
-      renderApp()
+      // renderApp() called automatically by Store
     })
   })
 }
 
 function showNewProductModal() {
-  const session = sessions.find(s => s.id === currentSession)
+  const session = Store.state.sessions.find(s => s.id === Store.state.currentSession)
   const modal = document.createElement("div")
   modal.className = "modal"
   modal.innerHTML = `
@@ -1070,7 +1065,7 @@ function showNewProductModal() {
           <p class="mt-1 text-sm muted-text">${t("modals.compatibilityHelp")}</p>
 
           <div id="compatible-products-list" class="mt-3 space-y-2" style="display:block; max-height:220px; overflow:auto;">
-            ${sessions.find(s => s.id === currentSession).products.map(p => `
+            ${Store.state.sessions.find(s => s.id === Store.state.currentSession).products.map(p => `
               <div class="flex items-center">
                 <input type="checkbox" id="compat-${p.id}" value="${p.id}" class="compat-checkbox h-4 w-4 accent-primary border-default rounded focus:ring-primary">
                 <label for="compat-${p.id}" class="ml-2 text-sm secondary-text">${p.name}</label>
@@ -1174,7 +1169,7 @@ function showNewProductModal() {
     const compatibleProducts = []
     document.querySelectorAll('#compatible-products-list input.compat-checkbox:checked').forEach(cb => compatibleProducts.push(cb.value))
 
-    SidebarAPI.createProduct(currentSession, {
+    Store.sync(SidebarAPI.createProduct(Store.state.currentSession, {
       name,
       quantity,
       weight,
@@ -1186,9 +1181,8 @@ function showNewProductModal() {
       height,
       dimensionUnit,
       limitedCompatibilityWith: compatibleProducts,
-    }).then((response) => {
-        sessions = response.sessions
-        const session = sessions.find(s => s.id === currentSession)
+    })).then(() => {
+        const session = Store.getSession()
         const newProduct = session.products[session.products.length - 1]
 
         // If user selected compatible products, ensure bidirectional links
@@ -1199,19 +1193,12 @@ function showNewProductModal() {
               if (!prod.limitedCompatibilityWith.includes(newProduct.id)) prod.limitedCompatibilityWith.push(newProduct.id)
             }
           })
-        }
-
-        // Save updated session if there are bidirectional links to persist
-        if (compatibleProducts.length > 0) {
-          SidebarAPI.updateSession(currentSession, session).then((resp) => {
-            sessions = resp.sessions
-            closeModal()
-            renderApp()
-          })
+          // Save updated session with bidirectional links
+          Store.sync(SidebarAPI.updateSession(Store.state.currentSession, session)).then(() => closeModal())
         } else {
           closeModal()
-          renderApp()
         }
+        // renderApp() called automatically by Store
       })
   }
 
@@ -1245,7 +1232,7 @@ function showNewProductModal() {
 }
 
 function showEditProductModal(product) {
-  const session = sessions.find(s => s.id === currentSession)
+  const session = Store.state.sessions.find(s => s.id === Store.state.currentSession)
   const modal = document.createElement("div")
   modal.className = "modal"
   modal.innerHTML = `
@@ -1324,7 +1311,7 @@ function showEditProductModal(product) {
         </div>
         ` : ''}
 
-        ${sessions.find(s => s.id === currentSession).alternativeGroups && sessions.find(s => s.id === currentSession).alternativeGroups.some(g => g.options.some(opt => opt.products?.some(p => p.productId === product.id))) ? `
+        ${Store.state.sessions.find(s => s.id === Store.state.currentSession).alternativeGroups && Store.state.sessions.find(s => s.id === Store.state.currentSession).alternativeGroups.some(g => g.options.some(opt => opt.products?.some(p => p.productId === product.id))) ? `
           <div class="mb-6 secondary-bg border border-default rounded-lg p-3">
             <div class="flex">
               <span class="icon icon-warning h-5 w-5 muted-text mr-2 flex-shrink-0"></span>
@@ -1347,7 +1334,7 @@ function showEditProductModal(product) {
           <p class="mt-1 text-sm muted-text">${t("modals.compatibilityHelpEdit")}</p>
 
           <div id="compatible-products-list" class="mt-3 space-y-2" style="max-height:220px; overflow:auto;">
-            ${sessions.find(s => s.id === currentSession).products.filter(p => p.id !== product.id).map(p => `
+            ${Store.state.sessions.find(s => s.id === Store.state.currentSession).products.filter(p => p.id !== product.id).map(p => `
               <div class="flex items-center">
                 <input type="checkbox" id="compat-${p.id}" value="${p.id}" class="compat-checkbox h-4 w-4 accent-primary border-default rounded focus:ring-primary" ${product.limitedCompatibilityWith && product.limitedCompatibilityWith.includes(p.id) ? 'checked' : ''}>
                 <label for="compat-${p.id}" class="ml-2 text-sm secondary-text">${p.name}</label>
@@ -1442,7 +1429,7 @@ function showEditProductModal(product) {
       compatibleProducts.push(cb.value)
     })
 
-    const session = sessions.find(s => s.id === currentSession)
+    const session = Store.state.sessions.find(s => s.id === Store.state.currentSession)
 
     const weightInput = document.getElementById("product-weight")
     const weight = weightInput ? (parseFloat(weightInput.value) || null) : null
@@ -1500,10 +1487,8 @@ function showEditProductModal(product) {
       }
     })
 
-    SidebarAPI.updateSession(currentSession, session).then((response) => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.updateSession(Store.state.currentSession, session)).then(() => {
       closeModal()
-      renderApp()
     })
   }
 
@@ -1521,8 +1506,8 @@ function showEditProductModal(product) {
 }
 
 function showEditPageModal(page) {
-  const session = sessions.find(s => s.id === currentSession)
-  const product = session.products.find(p => p.id === currentProduct)
+  const session = Store.state.sessions.find(s => s.id === Store.state.currentSession)
+  const product = session.products.find(p => p.id === Store.state.currentProduct)
   const modal = document.createElement("div")
   modal.className = "modal"
   modal.innerHTML = `
@@ -1843,10 +1828,8 @@ function showEditPageModal(page) {
       ...(distanceUnit && { distanceUnit }),
     }
 
-    SidebarAPI.updatePage(currentSession, currentProduct, page.id, updatedPage).then((response) => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.updatePage(Store.state.currentSession, Store.state.currentProduct, page.id, updatedPage)).then(() => {
       closeModal()
-      renderApp()
     })
   }
 
@@ -1864,7 +1847,7 @@ function showEditPageModal(page) {
 }
 
 function showEditBundleModal(bundle) {
-  const session = sessions.find((s) => s.id === currentSession)
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
   const modal = document.createElement("div")
   modal.className = "modal"
   modal.innerHTML = `
@@ -2242,10 +2225,8 @@ function showEditBundleModal(bundle) {
       ...(distanceUnit && { distanceUnit }),
     }
 
-    SidebarAPI.updateBundle(currentSession, bundle.id, updatedBundle).then((response) => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.updateBundle(Store.state.currentSession, bundle.id, updatedBundle)).then(() => {
       closeModal()
-      renderApp()
     })
   }
 
@@ -2296,10 +2277,8 @@ function showDeleteBundleModal(bundleId) {
   })
 
   document.getElementById("delete-button").addEventListener("click", () => {
-    SidebarAPI.deleteBundle(currentSession, bundleId).then((response) => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.deleteBundle(Store.state.currentSession, bundleId)).then(() => {
       document.body.removeChild(modal)
-      renderApp()
     })
   })
 }
@@ -2338,10 +2317,8 @@ function showDeleteProductModal(productId) {
   })
 
   document.getElementById("delete-button").addEventListener("click", () => {
-    SidebarAPI.deleteProduct(currentSession, productId).then((response) => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.deleteProduct(Store.state.currentSession, productId)).then(() => {
       document.body.removeChild(modal)
-      renderApp()
     })
   })
 }
@@ -2380,24 +2357,22 @@ function showDeletePageModal(pageId) {
   })
 
   document.getElementById("delete-button").addEventListener("click", () => {
-    SidebarAPI.deletePage(currentSession, currentProduct, pageId).then((response) => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.deletePage(Store.state.currentSession, Store.state.currentProduct, pageId)).then(() => {
       document.body.removeChild(modal)
-      renderApp()
     })
   })
 }
 
 function showScrapedDataModal() {
-  if (!scrapedData) return
+  if (!Store.state.scrapedData) return
 
-  const session = sessions.find((s) => s.id === currentSession)
-  const product = session.products.find((p) => p.id === currentProduct)
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
+  const product = session.products.find((p) => p.id === Store.state.currentProduct)
 
   const modal = document.createElement("div")
   modal.className = "modal"
 
-  const hasKnownParser = scrapedData.hasKnownParser;
+  const hasKnownParser = Store.state.scrapedData.hasKnownParser;
   modal.innerHTML = `
     <div id="modalOverlay" class="fixed w-full h-full inset-0 bg-black/50 flex justify-center items-center z-50">
       <div id="modalContent" class="card-bg rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
@@ -2455,7 +2430,7 @@ function showScrapedDataModal() {
           <input 
             type="text" 
             id="page-url" 
-            value="${scrapedData.url}" 
+            value="${Store.state.scrapedData.url}" 
             readonly
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
@@ -2466,7 +2441,7 @@ function showScrapedDataModal() {
           <input 
             type="text" 
             id="page-price" 
-            value="${scrapedData.hasKnownParser ? (scrapedData.price || "") : ""}"
+            value="${Store.state.scrapedData.hasKnownParser ? (Store.state.scrapedData.price || "") : ""}"
             placeholder="${t("modals.enterPrice")}"
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
@@ -2477,7 +2452,7 @@ function showScrapedDataModal() {
           <input 
             type="text" 
             id="page-shipping" 
-            value="${scrapedData.hasKnownParser ? (scrapedData.shippingPrice || "") : ""}"
+            value="${Store.state.scrapedData.hasKnownParser ? (Store.state.scrapedData.shippingPrice || "") : ""}"
             placeholder="${t("modals.enterShipping")}"
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
@@ -2488,7 +2463,7 @@ function showScrapedDataModal() {
           <input 
             type="text" 
             id="page-insurance" 
-            value="${scrapedData.hasKnownParser ? (scrapedData.insurancePrice || "") : ""}"
+            value="${Store.state.scrapedData.hasKnownParser ? (Store.state.scrapedData.insurancePrice || "") : ""}"
             placeholder="${t("modals.enterInsurance")}"
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
@@ -2500,8 +2475,8 @@ function showScrapedDataModal() {
             id="page-currency" 
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="FREE" ${scrapedData.priceCurrency === "FREE" ? "selected" : ""}>${t("pages.free")}</option>
-            ${CURRENCIES.map(c => `<option value="${c.code}" ${scrapedData.priceCurrency === c.code ? "selected" : ""}>${c.label} - ${c.symbol}</option>`).join('')}
+            <option value="FREE" ${Store.state.scrapedData.priceCurrency === "FREE" ? "selected" : ""}>${t("pages.free")}</option>
+            ${CURRENCIES.map(c => `<option value="${c.code}" ${Store.state.scrapedData.priceCurrency === c.code ? "selected" : ""}>${c.label} - ${c.symbol}</option>`).join('')}
           </select>
         </div>
 
@@ -2510,7 +2485,7 @@ function showScrapedDataModal() {
           <input 
             type="text" 
             id="page-seller" 
-            value="${scrapedData.hasKnownParser ? (scrapedData.seller || "") : ""}"
+            value="${Store.state.scrapedData.hasKnownParser ? (Store.state.scrapedData.seller || "") : ""}"
             placeholder="${t("modals.enterSeller")}"
             class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
@@ -2677,7 +2652,7 @@ function showScrapedDataModal() {
   const closeModal = () => {
     clearAllErrors(modal)
     document.body.removeChild(modal)
-    scrapedData = null
+    Store.setState({ scrapedData: null }, true)
   }
 
   const saveScrapedData = () => {
@@ -2784,11 +2759,9 @@ function showScrapedDataModal() {
         bundle.products.push({ productId, quantity })
       })
 
-      SidebarAPI.createBundle(currentSession, bundle).then((response) => {
-        sessions = response.sessions
+      Store.sync(SidebarAPI.createBundle(Store.state.currentSession, bundle)).then(() => {
         closeModal()
-        currentView = "pages"
-        renderApp()
+        Store.setState({ currentView: 'pages' }, true) // Don't trigger extra render
       })
     } else {
       const page = {
@@ -2814,11 +2787,9 @@ function showScrapedDataModal() {
         timestamp: new Date().toISOString(),
       }
 
-      SidebarAPI.createPage(currentSession, currentProduct, page).then((response) => {
-        sessions = response.sessions
+      Store.sync(SidebarAPI.createPage(Store.state.currentSession, Store.state.currentProduct, page)).then(() => {
         closeModal()
-        currentView = "pages"
-        renderApp()
+        Store.setState({ currentView: 'pages' }, true) // Don't trigger extra render
       })
     }
   }
@@ -2843,7 +2814,7 @@ function renderCalculationRules(prefix, ruleData, showFreeOption = true) {
 
     if (!showFreeOption && type === 'free') type = 'fixed';
 
-    const session = sessions.find(s => s.id === currentSession);
+  const session = Store.state.sessions.find(s => s.id === Store.state.currentSession);
 
     // Build types list based on session options
     const allTypes = [
@@ -3040,7 +3011,7 @@ function getValueLabel(type, tierValueType, tierValueMode, unit = '') {
     // Define prefix based on tierValueType
     let prefix = '';
     if (tierValueType === 'fixed') {
-        prefix = currentCurrencySymbol;
+        prefix = Store.state.currency;
     } else if (tierValueType === 'pctOrder') {
         prefix = '%commande';
     } else if (tierValueType === 'pctDelivery') {
@@ -3137,7 +3108,7 @@ function renderTieredInputs(prefix, data, type) {
         } else if (['distance', 'weight', 'volume'].includes(type)) {
             const unitValue = data.unit || (units[0] ? units[0].value : '');
             const unitLabel = getUnitLabel(type, unitValue);
-            amountLabel = `${t('deliveryRules.amount')} (${currentCurrencySymbol}/${unitLabel})`
+            amountLabel = `${t('deliveryRules.amount')} (${Store.state.currency}/${unitLabel})`
         }
 
         html += `
@@ -4413,7 +4384,7 @@ function renderSellerRecapCard(session, seller, rule) {
       html = `
         <div class="${indentClass} text-sm secondary-text">
           <span class="font-medium">${t("deliveryRules.typeFixed")}:</span>
-          <span class="card-text font-semibold">${amount.toFixed(2)} ${currentCurrencySymbol}</span>
+          <span class="card-text font-semibold">${amount.toFixed(2)} ${Store.state.currency}</span>
         </div>
       `
     } else if (type === 'percentage') {
@@ -4471,7 +4442,7 @@ function renderSellerRecapCard(session, seller, rule) {
 
                     let valueDisplay = ''
                     if (tierValueType === 'fixed') {
-                      valueDisplay = `${value.toFixed(2)} ${currentCurrencySymbol}`
+                      valueDisplay = `${value.toFixed(2)} ${Store.state.currency}`
                     } else if (tierValueType === 'pctOrder' || tierValueType === 'pctDelivery') {
                       valueDisplay = `${(value * 100).toFixed(2)}%`
                     }
@@ -4506,7 +4477,7 @@ function renderSellerRecapCard(session, seller, rule) {
         html = `
           <div class="${indentClass} text-sm secondary-text">
             <span class="font-medium">${typeLabels[type] || type}:</span>
-            <span class="card-text font-semibold">${amount.toFixed(2)} ${currentCurrencySymbol}</span>
+            <span class="card-text font-semibold">${amount.toFixed(2)} ${Store.state.currency}</span>
             ${unit ? `<span class="text-xs muted-text"> / ${unitLabel}</span>` : ''}
           </div>
         `
@@ -4547,7 +4518,7 @@ function renderSellerRecapCard(session, seller, rule) {
         <div class="pt-2 mt-2 border-t border-default">
           <p class="text-xs secondary-text">
             <span class="font-medium">${t("deliveryRules.freeShippingThreshold")}</span>
-            <span class="card-text font-semibold ml-1">${rule.globalFreeShippingThreshold.toFixed(2)} ${currentCurrencySymbol}</span>
+            <span class="card-text font-semibold ml-1">${rule.globalFreeShippingThreshold.toFixed(2)} ${Store.state.currency}</span>
           </p>
         </div>
       `
@@ -4568,7 +4539,7 @@ function renderSellerRecapCard(session, seller, rule) {
           <div class="flex justify-between items-start">
             <p class="text-sm font-medium card-text">${group.name || t("deliveryRules.newGroupPlaceholder")}</p>
             <span class="text-xs secondary-text bg-[hsl(var(--muted))] px-2 py-0.5 rounded">
-              ${productCount} ${productCount === 1 ? t("sessions.product") : t("sessions.products")}
+  ${productCount} ${productCount === 1 ? t("sessions.product") : t("sessions.products")}
             </span>
           </div>
           ${renderCalcMethodDetails(group.calculationMethod, false)}
@@ -4578,7 +4549,7 @@ function renderSellerRecapCard(session, seller, rule) {
           <div class="pt-1 mt-1 border-t border-default/50">
             <p class="text-xs secondary-text">
               <span class="font-medium">${t("deliveryRules.freeShippingThreshold")}</span>
-              <span class="card-text font-semibold ml-1">${group.freeShippingThreshold.toFixed(2)} ${currentCurrencySymbol}</span>
+              <span class="card-text font-semibold ml-1">${group.freeShippingThreshold.toFixed(2)} ${Store.state.currency}</span>
             </p>
           </div>
         `
@@ -4593,7 +4564,7 @@ function renderSellerRecapCard(session, seller, rule) {
       <div class="p-3 mt-2 secondary-bg rounded-lg border border-default">
         <p class="text-sm secondary-text">
           <span class="font-medium">${t("deliveryRules.customsClearanceFees")}:</span>
-          <span class="card-text font-semibold">${rule.customsClearanceFee.toFixed(2)} ${currentCurrencySymbol}</span>
+          <span class="card-text font-semibold">${rule.customsClearanceFee.toFixed(2)} ${Store.state.currency}</span>
         </p>
       </div>
     `
@@ -4816,7 +4787,7 @@ function renderSaveButton() {
 // ============================================================================
 
 function renderSellerDeliveryRulesView(seller) {
-  const session = sessions.find((s) => s.id === currentSession)
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
   const rule = getRule(session, seller)
   const safeSellerId = seller.replace(/\s+/g, '-')
   const copiedFrom = rule.copiedFrom || 'None'
@@ -4836,9 +4807,7 @@ function renderSellerDeliveryRulesView(seller) {
   if (!sellerCard) return
 
   document.getElementById("back-to-list-button")?.addEventListener("click", () => {
-    currentRulesView = "list"
-    currentSellerEditing = null
-    renderApp()
+    Store.setState({ currentRulesView: 'list', currentSellerEditing: null })
   })
 
   setupSameSellerListener(sellerCard)
@@ -5208,25 +5177,22 @@ function renderSellerDeliveryRulesView(seller) {
     if (ruleIndex > -1) session.deliveryRules[ruleIndex] = currentRule
     else session.deliveryRules.push(currentRule)
 
-    SidebarAPI.updateSession(currentSession, session).then((response) => {
-        sessions = response.sessions
-        currentRulesView = "list"
-        currentSellerEditing = null
-        renderApp()
+    Store.sync(SidebarAPI.updateSession(Store.state.currentSession, session)).then(() => {
+        Store.setState({ currentRulesView: 'list', currentSellerEditing: null }, true)
     })
   })
 }
 
 function renderDeliveryRulesView() {
-  const session = sessions.find((s) => s.id === currentSession)
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
   if (!session) {
-    currentView = "sessions"
+    Store.state.currentView = "sessions"
     renderApp()
     return
   }
 
-  if (currentRulesView === "edit" && currentSellerEditing) {
-    renderSellerDeliveryRulesView(currentSellerEditing)
+  if (Store.state.currentRulesView === "edit" && Store.state.currentSellerEditing) {
+    renderSellerDeliveryRulesView(Store.state.currentSellerEditing)
     return
   }
 
@@ -5242,9 +5208,7 @@ function renderDeliveryRulesView() {
   })
 
   if (hasNewRules) {
-    SidebarAPI.updateSession(currentSession, session).then((response) => {
-      sessions = response.sessions
-    })
+    Store.sync(SidebarAPI.updateSession(Store.state.currentSession, session))
   }
 
   app.innerHTML = `
@@ -5335,15 +5299,13 @@ function renderDeliveryRulesView() {
   `
 
   document.getElementById("back-button").addEventListener("click", () => {
-    currentView = "products"
+    Store.state.currentView = "products"
     renderApp()
   })
 
   document.querySelectorAll(".edit-seller-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      currentSellerEditing = btn.dataset.seller
-      currentRulesView = "edit"
-      renderApp()
+      Store.setState({ currentSellerEditing: btn.dataset.seller, currentRulesView: 'edit' })
     })
   })
 
@@ -5384,17 +5346,15 @@ function renderDeliveryRulesView() {
         }
       }
 
-      SidebarAPI.updateSession(currentSession, session).then((response) => {
-        sessions = response.sessions
-        currentView = "products"
-        renderApp()
+      Store.sync(SidebarAPI.updateSession(Store.state.currentSession, session)).then(() => {
+        Store.navigate('products')
       })
     })
   }
 }
 
 function showNewCustomsCategoryModal() {
-  const session = sessions.find(s => s.id === currentSession)
+  const session = Store.state.sessions.find(s => s.id === Store.state.currentSession)
   // Get current defaultVAT value from input field if it exists
   const defaultVATInput = document.getElementById("default-vat")
   let defaultVATPercentage = ''
@@ -5498,10 +5458,8 @@ function showNewCustomsCategoryModal() {
       }
     }
 
-    SidebarAPI.createCustomsCategory(currentSession, category, defaultVAT).then((response) => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.createCustomsCategory(Store.state.currentSession, category, defaultVAT)).then(() => {
       closeModal()
-      renderApp()
     })
   }
 
@@ -5610,10 +5568,8 @@ function showEditCustomsCategoryModal(category) {
       }
     }
 
-    SidebarAPI.updateCustomsCategory(currentSession, category.id, updatedCategory, defaultVAT).then(() => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.updateCustomsCategory(Store.state.currentSession, category.id, updatedCategory, defaultVAT)).then(() => {
       closeModal()
-      renderApp()
     })
   }
 
@@ -5662,10 +5618,8 @@ function showDeleteCustomsCategoryModal(categoryId) {
       }
     }
 
-    SidebarAPI.deleteCustomsCategory(currentSession, categoryId, defaultVAT).then((response) => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.deleteCustomsCategory(Store.state.currentSession, categoryId, defaultVAT)).then(() => {
       close()
-      renderApp()
     })
   })
 }
@@ -5724,7 +5678,7 @@ function importSession() {
 
           // Check for name collision
           let name = sessionData.name
-          while (sessions.some(s => s.name === name)) {
+          while (Store.state.sessions.some(s => s.name === name)) {
              name = prompt(`The session name "${name}" is already taken. Please enter a new name:`, name + " (Imported)")
              if (name === null) return // User cancelled
              name = name.trim()
@@ -5732,7 +5686,7 @@ function importSession() {
           }
           sessionData.name = name
 
-          SidebarAPI.createSession(name).then(response => {
+          Store.sync(SidebarAPI.createSession(name)).then(response => {
              const newSessionId = response.currentSession;
              const updatedSession = {
                ...sessionData,
@@ -5740,11 +5694,8 @@ function importSession() {
                created: new Date().toISOString()
              };
 
-             SidebarAPI.updateSession(newSessionId, updatedSession).then(updateResponse => {
-               sessions = updateResponse.sessions;
-               currentSession = newSessionId;
-               renderApp();
-             });
+             Store.sync(SidebarAPI.updateSession(newSessionId, updatedSession));
+             // renderApp() called automatically by Store
           });
 
         } catch (err) {
@@ -5757,9 +5708,9 @@ function importSession() {
 }
 
 function renderAlternativesView() {
-  const session = sessions.find((s) => s.id === currentSession)
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
   if (!session) {
-    currentView = "sessions"
+    Store.state.currentView = "sessions"
     renderApp()
     return
   }
@@ -5818,7 +5769,7 @@ function renderAlternativesView() {
   `
 
   document.getElementById("back-button").addEventListener("click", () => {
-    currentView = "products"
+    Store.state.currentView = "products"
     renderApp()
   })
 
@@ -5843,7 +5794,7 @@ function renderAlternativesView() {
 }
 
 function showNewAlternativeGroupModal() {
-  const session = sessions.find((s) => s.id === currentSession)
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
   const products = session.products
 
   const modal = document.createElement("div")
@@ -6022,10 +5973,8 @@ function showNewAlternativeGroupModal() {
       return
     }
 
-    SidebarAPI.createAlternativeGroup(currentSession, { name, options }).then(response => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.createAlternativeGroup(Store.state.currentSession, { name, options })).then(() => {
       closeModal()
-      renderAlternativesView()
     })
   }
 
@@ -6040,7 +5989,7 @@ function showNewAlternativeGroupModal() {
 }
 
 function showEditAlternativeGroupModal(group) {
-  const session = sessions.find((s) => s.id === currentSession)
+  const session = Store.state.sessions.find((s) => s.id === Store.state.currentSession)
   const products = session.products
 
   const modal = document.createElement("div")
@@ -6222,10 +6171,8 @@ function showEditAlternativeGroupModal(group) {
       return
     }
 
-    SidebarAPI.updateAlternativeGroup(currentSession, group.id, { name, options }).then(response => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.updateAlternativeGroup(Store.state.currentSession, group.id, { name, options })).then(() => {
       closeModal()
-      renderAlternativesView()
     })
   }
 
@@ -6262,10 +6209,8 @@ function showDeleteAlternativeGroupModal(groupId) {
   document.getElementById('cancel-button').addEventListener('click', close)
 
   document.getElementById('delete-button').addEventListener('click', () => {
-    SidebarAPI.deleteAlternativeGroup(currentSession, groupId).then(response => {
-      sessions = response.sessions
+    Store.sync(SidebarAPI.deleteAlternativeGroup(Store.state.currentSession, groupId)).then(() => {
       close()
-      renderAlternativesView()
     })
   })
 }
