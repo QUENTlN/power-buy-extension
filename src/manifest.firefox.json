@@ -28,9 +28,7 @@
   },
   "background": {
     "scripts": [
-      "browser.js",
-      "config/knownParsers.js",
-      "background.js"
+      "background.bundle.js"
     ]
   },
   "web_accessible_resources": [

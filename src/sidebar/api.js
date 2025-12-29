@@ -1,7 +1,9 @@
 // Thin client for talking to the background script from the sidebar.
 // All runtime messages should go through this module.
 
-const SidebarAPI = {
+import { browser } from '../shared/browser.js';
+
+export const SidebarAPI = {
   // Sessions
   getSessions() {
     return browser.runtime.sendMessage({ action: "getSessions" })

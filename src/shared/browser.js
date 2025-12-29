@@ -35,4 +35,6 @@
   }
 })()
 
+export const browser = globalThis.browser
+
 

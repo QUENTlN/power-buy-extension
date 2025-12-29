@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "node build.js",
-    "build": "NODE_ENV=production node build.js --browser=firefox",
+    "dev": "node build.js --browser=firefox",
+    "build": "NODE_ENV=production node build.js",
     "build:firefox": "NODE_ENV=production node build.js --browser=firefox",
     "build:chrome": "NODE_ENV=production node build.js --browser=chrome",
     "watch:firefox": "node build.js --watch --browser=firefox",
@@ -25,9 +25,10 @@
   "description": "",
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.4",
-    "cssnano": "^7.0.6",
     "fs-extra": "^11.3.0",
-    "postcss": "^8.5.3",
-    "uglify-js": "^3.19.3"
+    "postcss": "^8.5.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2"
   }
 }

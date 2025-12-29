@@ -1,3 +1,5 @@
+import { browser } from '../shared/browser.js';
+
 document.addEventListener("DOMContentLoaded", () => {
   const resultsContent = document.getElementById("results-content")
 

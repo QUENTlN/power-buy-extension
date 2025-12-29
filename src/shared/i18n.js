@@ -1,4 +1,7 @@
 // i18n system for the browser extension
+import { browser } from './browser.js';
+import { LANGUAGES, DEFAULT_LANGUAGE } from './config/languages.js';
+
 let currentLanguage = DEFAULT_LANGUAGE;
 let translations = {};
 
@@ -7,7 +10,7 @@ let translations = {};
  * @param {string} language - Language code (e.g., 'en', 'fr', 'es')
  * @returns {Promise<void>}
  */
-async function initI18n(language) {
+export async function initI18n(language) {
   if (!language) {
     // Try to get from storage first
     const settings = await browser.storage.local.get(["language"]);
@@ -20,7 +23,7 @@ async function initI18n(language) {
       language = supportedLangs.includes(browserLang) ? browserLang : DEFAULT_LANGUAGE;
     }
   }
-  
+
   await loadTranslations(language);
   currentLanguage = language;
 }
@@ -56,7 +59,7 @@ async function loadTranslations(language) {
  * @param {Object} params - Optional parameters for interpolation
  * @returns {string} - Translated string
  */
-function t(key, params = {}) {
+export function t(key, params = {}) {
   // Navigate nested object using dot notation
   const keys = key.split(".");
   let value = translations;
@@ -91,7 +94,7 @@ function t(key, params = {}) {
  * Get the current language code
  * @returns {string}
  */
-function getCurrentLanguage() {
+export function getCurrentLanguage() {
   return currentLanguage;
 }
 
@@ -100,7 +103,7 @@ function getCurrentLanguage() {
  * @param {string} language - Language code
  * @returns {Promise<void>}
  */
-async function setLanguage(language) {
+export async function setLanguage(language) {
   await loadTranslations(language);
   currentLanguage = language;
   // Save to storage

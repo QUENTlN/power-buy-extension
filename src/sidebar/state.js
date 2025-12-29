@@ -1,6 +1,6 @@
 // Centralized State Management for the sidebar
 
-const Store = {
+export const Store = {
   // Centralized state
   state: {
     sessions: [],

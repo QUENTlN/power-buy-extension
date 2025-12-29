@@ -1,6 +1,8 @@
 // Generic modal helpers used across the sidebar UI
 
-function setupAutoFocus(modal) {
+import { t } from '../shared/i18n.js';
+
+export function setupAutoFocus(modal) {
   // Focus on the first input, select, or textarea that is not disabled
   setTimeout(() => {
     const firstInput = modal.querySelector(
@@ -12,7 +14,7 @@ function setupAutoFocus(modal) {
   }, 0)
 }
 
-function setupEscapeKey(modal, closeCallback) {
+export function setupEscapeKey(modal, closeCallback) {
   const handleEscape = (e) => {
     if (e.key === "Escape") {
       closeCallback()
@@ -22,7 +24,7 @@ function setupEscapeKey(modal, closeCallback) {
   document.addEventListener("keydown", handleEscape)
 }
 
-function setupEnterKey(modal, submitCallback) {
+export function setupEnterKey(modal, submitCallback) {
   const handleEnter = (e) => {
     // Don't submit on Enter if we're in a textarea
     if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
@@ -33,7 +35,7 @@ function setupEnterKey(modal, submitCallback) {
   modal.addEventListener("keydown", handleEnter)
 }
 
-function showFieldError(fieldId, errorMessage) {
+export function showFieldError(fieldId, errorMessage) {
   const field = document.getElementById(fieldId)
   if (!field) return
 
@@ -54,7 +56,7 @@ function showFieldError(fieldId, errorMessage) {
   field.parentElement.appendChild(errorDiv)
 }
 
-function clearFieldError(fieldId) {
+export function clearFieldError(fieldId) {
   const field = document.getElementById(fieldId)
   if (!field) return
 
@@ -69,7 +71,7 @@ function clearFieldError(fieldId) {
   }
 }
 
-function clearAllErrors(modal) {
+export function clearAllErrors(modal) {
   // Remove all error styling and messages
   modal.querySelectorAll(".error-border").forEach((field) => {
     field.classList.remove("error-border", "error-ring")
@@ -78,7 +80,7 @@ function clearAllErrors(modal) {
   modal.querySelectorAll(".field-error-message").forEach((msg) => msg.remove())
 }
 
-function validateRequiredField(fieldId, fieldName) {
+export function validateRequiredField(fieldId, fieldName) {
   const field = document.getElementById(fieldId)
   if (!field) return true
 

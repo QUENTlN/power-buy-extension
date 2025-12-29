@@ -1,4 +1,4 @@
-const CURRENCIES = [
+export const CURRENCIES = [
   { code: "ALL", label: "Albania Lek", symbol: "Lek" },
   { code: "AFN", label: "Afghanistan Afghani", symbol: "؋" },
   { code: "ARS", label: "Argentina Peso", symbol: "$" },
@@ -109,4 +109,4 @@ const CURRENCIES = [
   { code: "ZWD", label: "Zimbabwe Dollar", symbol: "Z$" }
 ];
 
-const DEFAULT_CURRENCY = "EUR";
+export const DEFAULT_CURRENCY = "EUR";

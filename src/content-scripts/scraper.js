@@ -215,7 +215,7 @@ const strategies = {
 
       // Vérifier si c'est gratuit
       if (freeTerms.some(term => text.includes(term))) {
-        return type === 'price' ? '0' : 'FREE'
+        return type === 'price' ? '0' : ''
       }
       
       // Extraire le nombre (avant ou après la devise)

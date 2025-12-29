@@ -1,3 +1,5 @@
+import { browser } from '../shared/browser.js';
+
 document.addEventListener("DOMContentLoaded", () => {
   // Open sidebar/side panel
   document.getElementById("open-sidebar").addEventListener("click", async () => {

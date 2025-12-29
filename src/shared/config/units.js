@@ -1,4 +1,4 @@
-const WEIGHT_UNITS = [
+export const WEIGHT_UNITS = [
   { value: "mg", label: "mg" },
   { value: "g", label: "g" },
   { value: "kg", label: "kg" },
@@ -6,7 +6,7 @@ const WEIGHT_UNITS = [
   { value: "oz", label: "oz" },
 ]
 
-const VOLUME_UNITS = [
+export const VOLUME_UNITS = [
   { value: "mm3", label: "mm³" },
   { value: "cm3", label: "cm³" },
   { value: "m3", label: "m³" },
@@ -18,7 +18,7 @@ const VOLUME_UNITS = [
   { value: "pt", label: "pt" },
 ]
 
-const DIMENSION_UNITS = [
+export const DIMENSION_UNITS = [
   { value: "mm", label: "mm" },
   { value: "cm", label: "cm" },
   { value: "m", label: "m" },
@@ -27,13 +27,13 @@ const DIMENSION_UNITS = [
   { value: "yd", label: "yd" },
 ]
 
-const DISTANCE_UNITS = [
+export const DISTANCE_UNITS = [
   { value: "km", label: "km" },
   { value: "mi", label: "mi" },
   { value: "m", label: "m" },
 ]
 
-const DEFAULT_WEIGHT_UNIT = "g"
-const DEFAULT_VOLUME_UNIT = "l"
-const DEFAULT_DIMENSION_UNIT = "cm"
-const DEFAULT_DISTANCE_UNIT = "km"
+export const DEFAULT_WEIGHT_UNIT = "g"
+export const DEFAULT_VOLUME_UNIT = "l"
+export const DEFAULT_DIMENSION_UNIT = "cm"
+export const DEFAULT_DISTANCE_UNIT = "km"

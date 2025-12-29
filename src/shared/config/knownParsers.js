@@ -1,7 +1,6 @@
 // Default configuration for known parsers used by the scraper content script.
-// This file is loaded before `background.js` so that `knownParsers` is available globally.
 
-let knownParsers = {
+export let knownParsers = {
   amazon: {
     price: {
       strategy: "extractPrice",

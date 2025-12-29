@@ -1,0 +1,57 @@
+// Seller-related utility functions
+
+export function getUniqueSellers(session) {
+  const sellers = new Set()
+
+  session.products.forEach((product) => {
+    product.pages.forEach((page) => {
+      if (page.seller) {
+        sellers.add(page.seller)
+      }
+    })
+  })
+
+  if (session.bundles) {
+    session.bundles.forEach((bundle) => {
+      if (bundle.seller) {
+        sellers.add(bundle.seller)
+      }
+    })
+  }
+
+  return Array.from(sellers)
+}
+
+export function ensureDefaultRule(session, seller) {
+  if (!session.deliveryRules) session.deliveryRules = []
+
+  const existingRule = session.deliveryRules.find(r => r.seller === seller)
+
+  if (!existingRule) {
+    const defaultRule = {
+      seller: seller,
+      billingMethod: 'global',
+      calculationMethod: {
+        type: 'item'
+      }
+    }
+    session.deliveryRules.push(defaultRule)
+    return true
+  }
+
+  return false
+}
+
+export function getRule(session, seller) {
+  const rule = (session.deliveryRules || []).find(r => r.seller === seller) || {}
+  if (!rule.billingMethod) {
+    rule.billingMethod = 'global'
+  }
+  return rule
+}
+
+export function getSellerProducts(session, seller) {
+  return session.products.filter(p =>
+    p.pages.some(page => page.seller === seller)
+  )
+}

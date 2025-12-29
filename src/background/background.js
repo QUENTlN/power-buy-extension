@@ -1,6 +1,9 @@
-// Store for sessions, products, and pages
+import { browser } from '../shared/browser.js';
+import { knownParsers as defaultKnownParsers } from '../shared/config/knownParsers.js';
+
 let sessions = []
 let currentSession = null
+let parsers = defaultKnownParsers
 
 // Initialize from storage (sessions, current session, and optionally knownParsers overrides)
 browser.storage.local.get(["sessions", "currentSession", "knownParsers"]).then((result) => {
@@ -8,8 +11,8 @@ browser.storage.local.get(["sessions", "currentSession", "knownParsers"]).then((
   currentSession = result.currentSession || null
 
   // Allow overriding default parsers from storage if present
-  if (result.knownParsers && typeof knownParsers !== "undefined") {
-    knownParsers = result.knownParsers
+  if (result.knownParsers) {
+    parsers = result.knownParsers
   }
 })
 
@@ -18,7 +21,7 @@ function saveToStorage() {
   browser.storage.local.set({
     sessions,
     currentSession,
-    knownParsers,
+    knownParsers: parsers,
   })
 }
 
@@ -111,7 +114,7 @@ const messageHandlers = {
   // Read-only queries
   getSessions: () => ({ sessions, currentSession }),
   getCurrentSession: () => ({ currentSession }),
-  getKnownParsers: () => ({ knownParsers }),
+  getKnownParsers: () => ({ knownParsers: parsers }),
 
   // Actions
   scrapePage: (message, sender) => {
@@ -354,41 +357,13 @@ async function optimizeSession(sessionId) {
   if (!session) return { success: false, error: "Session not found" }
 
   try {
-    // Prepare data for the backend
-    const data = {
-      session: {
-        id: session.id,
-        name: session.name,
-        created: session.created,
-      },
-      products: session.products.map((product) => ({
-        id: product.id,
-        name: product.name,
-        quantity: product.quantity || 1,
-        pages: product.pages.map((page) => ({
-          id: page.id,
-          url: page.url,
-          price: page.price,
-          shippingPrice: page.shippingPrice,
-          currency: page.currency,
-          seller: page.seller,
-          itemsPerPurchase: page.itemsPerPurchase || 1,
-          ...(page.maxPerPurchase !== undefined && page.maxPerPurchase !== null && page.maxPerPurchase !== '' && { maxPerPurchase: page.maxPerPurchase }),
-        })),
-        limitedCompatibilityWith: product.limitedCompatibilityWith || [],
-      })),
-      bundles: session.bundles || [],
-      alternativeGroups: session.alternativeGroups || [],
-      deliveryRules: session.deliveryRules || [],
-    }
-
     // Call backend API
     const response = await fetch("https://your-backend-api.com/optimize", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(session),
     })
 
     if (!response.ok) {
