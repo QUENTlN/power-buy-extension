@@ -37,6 +37,15 @@ export function renderProductsView({ session }) {
         </button>
       </div>
 
+      ${session.forwardersEnabled ? `
+      <div class="flex space-x-4 mt-4">
+        <button id="forwarders-button" class="flex-1 flex items-center justify-center space-x-2 cursor-pointer secondary-bg secondary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm border border-default">
+          <span class="icon icon-forwarding h-5 w-5"></span>
+          <span class="text-lg font-medium">${t("products.forwarders")}</span>
+        </button>
+      </div>
+      ` : ''}
+
       ${session.importFeesEnabled ? `
       <div class="flex space-x-4 mt-4">
         <button id="import-fees-button" class="flex-1 flex items-center justify-center space-x-2 cursor-pointer secondary-bg secondary-text px-4 py-3 rounded-xl hover:opacity-90 transition-colors duration-200 shadow-sm border border-default">

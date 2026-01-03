@@ -1,3 +1,5 @@
+import { CURRENCIES } from '../../shared/config/currencies.js'
+
 /**
  * Format a decimal value as percentage without trailing zeros
  * @param {number} decimalValue - Value as decimal (e.g., 0.05 for 5%)
@@ -33,34 +35,8 @@ export function formatNumber(value, decimals = 2) {
 export function getCurrencySymbol(currencyCode) {
   if (!currencyCode) return ''
 
-  // Import currencies dynamically to avoid circular dependencies
-  const currencies = {
-    'EUR': '€', 'USD': '$', 'GBP': '£', 'JPY': '¥', 'CNY': '¥',
-    'AUD': '$', 'CAD': '$', 'CHF': 'CHF', 'SEK': 'kr', 'NOK': 'kr',
-    'DKK': 'kr', 'PLN': 'zł', 'CZK': 'Kč', 'HUF': 'Ft', 'RON': 'lei',
-    'BGN': 'лв', 'HRK': 'kn', 'RUB': '₽', 'TRY': '₺', 'INR': '₹',
-    'BRL': 'R$', 'MXN': '$', 'ZAR': 'R', 'KRW': '₩', 'SGD': '$',
-    'HKD': '$', 'NZD': '$', 'THB': '฿', 'MYR': 'RM', 'IDR': 'Rp',
-    'PHP': '₱', 'VND': '₫', 'ILS': '₪', 'ARS': '$', 'CLP': '$',
-    'COP': '$', 'PEN': 'S/.', 'UAH': '₴', 'EGP': '£', 'SAR': '﷼',
-    'AED': 'د.إ', 'QAR': '﷼', 'OMR': '﷼', 'KWD': 'د.ك', 'BHD': 'د.ب',
-    'ALL': 'Lek', 'AFN': '؋', 'AWG': 'ƒ', 'AZN': '₼', 'BSD': '$',
-    'BBD': '$', 'BYN': 'Br', 'BZD': 'BZ$', 'BMD': '$', 'BOB': '$b',
-    'BAM': 'KM', 'BWP': 'P', 'BND': '$', 'KHR': '៛', 'KYD': '$',
-    'CRC': '₡', 'CUP': '₱', 'DOP': 'RD$', 'XCD': '$', 'FKP': '£',
-    'FJD': '$', 'GHS': '¢', 'GIP': '£', 'GTQ': 'Q', 'GGP': '£',
-    'GYD': '$', 'HNL': 'L', 'ISK': 'kr', 'IRR': '﷼', 'IMP': '£',
-    'JMD': 'J$', 'JEP': '£', 'KZT': 'лв', 'KPW': '₩', 'KGS': 'лв',
-    'LAK': '₭', 'LBP': '£', 'LRD': '$', 'MKD': 'ден', 'MUR': '₨',
-    'MNT': '₮', 'MZN': 'MT', 'NAD': '$', 'NPR': '₨', 'ANG': 'ƒ',
-    'NIO': 'C$', 'NGN': '₦', 'PKR': '₨', 'PAB': 'B/.', 'PYG': 'Gs',
-    'RSD': 'Дин.', 'SCR': '₨', 'SBD': '$', 'SOS': 'S',
-    'LKR': '₨', 'SRD': '$', 'SYP': '£', 'TWD': 'NT$', 'TTD': 'TT$',
-    'TVD': '$', 'UYU': '$U', 'UZS': 'лв', 'VEF': 'Bs', 'YER': '﷼',
-    'ZWD': 'Z$'
-  }
-
-  return currencies[currencyCode] || currencyCode
+  const currency = CURRENCIES.find(c => c.code === currencyCode)
+  return currency ? currency.symbol : currencyCode
 }
 
 /**

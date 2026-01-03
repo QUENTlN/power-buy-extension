@@ -16,6 +16,7 @@ export function renderSessionFormView(session = null) {
 
   const manageQuantity = session ? session.manageQuantity !== false : false
   const importFeesEnabled = session?.importFeesEnabled || false
+  const forwardersEnabled = session?.forwardersEnabled || false
   const manageWeight = session?.manageWeight || false
   const manageVolume = session?.manageVolume || false
   const manageDimension = session?.manageDimension || false
@@ -49,6 +50,7 @@ export function renderSessionFormView(session = null) {
 
         ${renderToggle('manage-quantity', t("sessions.manageQuantities"), manageQuantity)}
         ${renderToggle('import-fees-enabled', t("sessions.ImportFeesManagement"), importFeesEnabled)}
+        ${renderToggle('forwarders-enabled', t("sessions.forwardersManagement"), forwardersEnabled)}
         ${renderToggle('manage-weight', t("sessions.manageWeight"), manageWeight)}
         ${renderToggle('manage-volume', t("sessions.manageVolume"), manageVolume)}
         ${renderToggle('manage-dimension', t("sessions.manageDimension"), manageDimension)}
@@ -77,6 +79,7 @@ export function collectSessionFormData(isEdit = false) {
     name: document.getElementById(`${prefix}session-name`).value.trim(),
     manageQuantity: document.getElementById(`${prefix}manage-quantity`).checked,
     importFeesEnabled: document.getElementById(`${prefix}import-fees-enabled`).checked,
+    forwardersEnabled: document.getElementById(`${prefix}forwarders-enabled`).checked,
     manageWeight: document.getElementById(`${prefix}manage-weight`).checked,
     manageVolume: document.getElementById(`${prefix}manage-volume`).checked,
     manageDimension: document.getElementById(`${prefix}manage-dimension`).checked,

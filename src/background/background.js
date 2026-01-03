@@ -111,6 +111,20 @@ const messageHandlers = {
     return { success: true, sessions, currentSession }
   },
 
+  // Forwarders
+  createForwarder: (message) => {
+    createForwarder(message.sessionId, message.forwarder)
+    return { success: true, sessions, currentSession }
+  },
+  updateForwarder: (message) => {
+    updateForwarder(message.sessionId, message.forwarderId, message.updatedForwarder)
+    return { success: true, sessions, currentSession }
+  },
+  deleteForwarder: (message) => {
+    deleteForwarder(message.sessionId, message.forwarderId)
+    return { success: true, sessions, currentSession }
+  },
+
   // Read-only queries
   getSessions: () => ({ sessions, currentSession }),
   getCurrentSession: () => ({ currentSession }),
@@ -184,11 +198,13 @@ function createSession(data) {
     name: data.name,
     manageQuantity: data.manageQuantity,
     importFeesEnabled: data.importFeesEnabled,
+    forwardersEnabled: data.forwardersEnabled,
     manageWeight: data.manageWeight,
     manageVolume: data.manageVolume,
     manageDimension: data.manageDimension,
     manageDistance: data.manageDistance,
     customsCategories: [],
+    forwarders: [],
     products: [],
     bundles: [],
     alternativeGroups: [],
@@ -412,6 +428,72 @@ function deleteCustomsCategory(sessionId, categoryId, defaultVAT) {
     if (defaultVAT !== undefined && defaultVAT !== null) {
       session.defaultVAT = defaultVAT
     }
+    saveToStorage()
+  }
+}
+
+// Forwarder management
+function createForwarder(sessionId, forwarder) {
+  const session = sessions.find((s) => s.id === sessionId)
+  if (session) {
+    if (!session.forwarders) session.forwarders = []
+    forwarder.id = Date.now().toString()
+
+    // Initialize default currency if not provided
+    if (!forwarder.currency) {
+      forwarder.currency = 'EUR'
+    }
+
+    // Initialize default fee structure if not provided
+    if (!forwarder.fees) {
+      forwarder.fees = {
+        reception: { calculationMethod: { type: 'fixed', amount: 0 } },
+        storage: { calculationMethod: { type: 'free' } },
+        repackaging: { calculationMethod: { type: 'free' } },
+        reShipping: { calculationMethod: { type: 'fixed', amount: 0 } }
+      }
+    }
+
+    session.forwarders.push(forwarder)
+    saveToStorage()
+  }
+}
+
+function updateForwarder(sessionId, forwarderId, updatedForwarder) {
+  const session = sessions.find((s) => s.id === sessionId)
+  if (session && session.forwarders) {
+    const forwarderIndex = session.forwarders.findIndex((f) => f.id === forwarderId)
+    if (forwarderIndex !== -1) {
+      session.forwarders[forwarderIndex] = {
+        ...session.forwarders[forwarderIndex],
+        ...updatedForwarder
+      }
+      saveToStorage()
+    }
+  }
+}
+
+function deleteForwarder(sessionId, forwarderId) {
+  const session = sessions.find((s) => s.id === sessionId)
+  if (session && session.forwarders) {
+    // Remove from forwarders list
+    session.forwarders = session.forwarders.filter((f) => f.id !== forwarderId)
+
+    // Clean up references in delivery rules
+    if (session.deliveryRules) {
+      session.deliveryRules.forEach(rule => {
+        if (rule.forwarderChain) {
+          rule.forwarderChain = rule.forwarderChain.filter(
+            link => link.forwarderId !== forwarderId
+          )
+          // Re-order remaining chain
+          rule.forwarderChain.forEach((link, idx) => {
+            link.order = idx
+          })
+        }
+      })
+    }
+
     saveToStorage()
   }
 }

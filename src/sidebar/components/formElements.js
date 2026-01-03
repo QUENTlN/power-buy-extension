@@ -19,14 +19,14 @@ export function renderRadioOption(config) {
 }
 
 export function renderToggleSwitch(config) {
-  const { id, label, checked, containerClass = '', additionalAttrs = '' } = config
+  const { id, label, checked, containerClass = '', additionalClasses = '', additionalAttrs = '' } = config
 
   return `
     <div class="${containerClass}">
       <div class="flex items-center justify-between">
         <span class="text-sm font-medium card-text">${label}</span>
         <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="${id}" class="sr-only peer" ${checked ? 'checked' : ''} ${additionalAttrs}>
+          <input type="checkbox" id="${id}" class="sr-only peer ${additionalClasses}" ${checked ? 'checked' : ''} ${additionalAttrs}>
           <div class="toggle-switch"></div>
         </label>
       </div>

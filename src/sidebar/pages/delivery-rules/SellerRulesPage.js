@@ -1,6 +1,7 @@
 import { t } from '../../../shared/i18n.js'
 import { renderSellerRulesView } from './SellerRulesView.js'
 import * as actions from './SellerRulesActions.js'
+import { getTierType, performLiveValidation } from '../../components/fees/index.js'
 
 const getApp = () => document.getElementById("app")
 
@@ -32,6 +33,9 @@ function attachEventListeners(sellerCard, session, seller, safeSellerId) {
 
     // Same seller selector
     actions.setupSameSellerListener(sellerCard)
+
+    // Currency selector
+    actions.setupCurrencyChangeListener(sellerCard)
 
     // Billing method radios
     actions.setupBillingMethodListeners(sellerCard, safeSellerId)
@@ -109,10 +113,10 @@ function attachEventListeners(sellerCard, session, seller, safeSellerId) {
             const isTieredCb = container.querySelector(`input[name="${prefix}_isTiered"]`)
 
             if (isTieredCb && isTieredCb.checked) {
-                const type = actions.getTierType(container)
+                const type = getTierType(container)
 
                 if (['quantity', 'distance', 'weight', 'volume'].includes(type)) {
-                    actions.performLiveValidation(input, container)
+                    performLiveValidation(input, container)
                 }
             }
         }
@@ -165,6 +169,29 @@ function attachEventListeners(sellerCard, session, seller, safeSellerId) {
 
         if (e.target.closest('.remove-range-btn')) {
             actions.handleRemoveRange(e)
+        }
+
+        // Forwarder chain: add forwarder
+        if (e.target.closest('.add-forwarder-to-chain-btn')) {
+            actions.handleAddForwarderToChain(session, seller)
+        }
+
+        // Forwarder chain: move up
+        if (e.target.closest('.move-up-btn')) {
+            const index = parseInt(e.target.closest('.move-up-btn').dataset.index)
+            actions.handleMoveForwarderUp(seller, index)
+        }
+
+        // Forwarder chain: move down
+        if (e.target.closest('.move-down-btn')) {
+            const index = parseInt(e.target.closest('.move-down-btn').dataset.index)
+            actions.handleMoveForwarderDown(seller, index)
+        }
+
+        // Forwarder chain: remove forwarder
+        if (e.target.closest('.remove-forwarder-btn')) {
+            const index = parseInt(e.target.closest('.remove-forwarder-btn').dataset.index)
+            actions.handleRemoveForwarder(seller, index)
         }
     })
 

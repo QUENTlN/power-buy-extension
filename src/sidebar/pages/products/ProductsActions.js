@@ -24,6 +24,10 @@ export function navigateToImportFees() {
   Store.setState({ currentView: 'importFees' })
 }
 
+export function navigateToForwarders() {
+  Store.setState({ currentView: 'forwarders', currentForwarderEditing: null })
+}
+
 export function getSession() {
   return Store.state.sessions.find(s => s.id === Store.state.currentSession)
 }

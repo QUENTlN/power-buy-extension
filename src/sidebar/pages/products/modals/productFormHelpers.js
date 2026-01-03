@@ -13,7 +13,7 @@ export function setupCompatibilityToggle(startExpanded = false) {
   if (startExpanded) {
     compatSection.style.display = 'block'
     toggleBtn.innerHTML = `
-      <span class="icon icon-chevron_up h-4 w-4 mr-1"></span>
+      <span class="icon icon-up h-4 w-4 mr-1"></span>
       ${t("modals.hideCompatibility")}
     `
   }
@@ -22,13 +22,13 @@ export function setupCompatibilityToggle(startExpanded = false) {
     if (compatSection.style.display === 'none') {
       compatSection.style.display = 'block'
       toggleBtn.innerHTML = `
-        <span class="icon icon-chevron_up h-4 w-4 mr-1"></span>
+        <span class="icon icon-up h-4 w-4 mr-1"></span>
         ${t("modals.hideCompatibility")}
       `
     } else {
       compatSection.style.display = 'none'
       toggleBtn.innerHTML = `
-        <span class="icon icon-chevron_down h-4 w-4 mr-1"></span>
+        <span class="icon icon-down h-4 w-4 mr-1"></span>
         ${t("modals.showCompatibility")}
       `
     }

@@ -11,6 +11,7 @@ import { initSettingsPage } from './pages/settings/SettingsPage.js';
 import { initDeliveryRulesPage } from './pages/delivery-rules/DeliveryRulesPage.js';
 import { initAlternativesPage } from './pages/alternatives/AlternativesPage.js';
 import { initImportFeesPage } from './pages/import-fees/ImportFeesPage.js';
+import { initForwardersPage } from './pages/forwarders/ForwardersPage.js';
 
 const app = document.getElementById("app")
 
@@ -78,6 +79,9 @@ function renderApp() {
       break
     case "importFees":
       initImportFeesPage(app)
+      break
+    case "forwarders":
+      initForwardersPage(app)
       break
     default:
       initSessionsPage(app)

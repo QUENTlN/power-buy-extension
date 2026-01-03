@@ -1,11 +1,10 @@
 import { t } from '../../../../shared/i18n.js'
 import { Store } from '../../../state.js'
 import { formatPercent, formatNumber, getCurrencySymbol } from '../../../utils/formatters.js'
+import { DEFAULT_CURRENCY } from '../../../../shared/config/currencies.js'
 
-function renderCalcMethodDetails(calcMethod, indent = false) {
+function renderCalcMethodDetails(calcMethod, currency, indent = false) {
   if (!calcMethod || !calcMethod.type) return ''
-
-  const currency = Store.state.currency
   const type = calcMethod.type
   const indentClass = indent ? 'ml-4' : ''
   let html = ''
@@ -123,7 +122,7 @@ function renderCalcMethodDetails(calcMethod, indent = false) {
 }
 
 export function renderSellerRecapCard(session, seller, rule) {
-  const currency = Store.state.currency
+  const currency = rule.currency || session.currency || DEFAULT_CURRENCY
   const billingMethod = rule.billingMethod || 'global'
   const copiedFrom = rule.copiedFrom || null
 
@@ -148,7 +147,7 @@ export function renderSellerRecapCard(session, seller, rule) {
     detailsHtml = `
       <div class="p-3 secondary-bg rounded-lg border border-default space-y-2">
         <p class="text-xs font-semibold secondary-text uppercase tracking-wide">${t("deliveryRules.sameFee")}</p>
-        ${renderCalcMethodDetails(rule.calculationMethod)}
+        ${renderCalcMethodDetails(rule.calculationMethod, currency)}
     `
     if (rule.globalFreeShipping && rule.globalFreeShippingThreshold) {
       detailsHtml += `
@@ -179,7 +178,7 @@ export function renderSellerRecapCard(session, seller, rule) {
               ${productCount} ${productCount === 1 ? t("sessions.product") : t("sessions.products")}
             </span>
           </div>
-          ${renderCalcMethodDetails(group.calculationMethod, false)}
+          ${renderCalcMethodDetails(group.calculationMethod, currency, false)}
       `
       if (group.freeShipping && group.freeShippingThreshold) {
         detailsHtml += `

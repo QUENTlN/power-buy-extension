@@ -27,6 +27,10 @@ function attachEventListeners(session) {
 
   document.getElementById("manage-alternatives-button")?.addEventListener("click", actions.navigateToAlternatives)
 
+  if (session.forwardersEnabled) {
+    document.getElementById("forwarders-button")?.addEventListener("click", actions.navigateToForwarders)
+  }
+
   if (session.importFeesEnabled) {
     document.getElementById("import-fees-button")?.addEventListener("click", actions.navigateToImportFees)
   }

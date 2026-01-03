@@ -164,6 +164,32 @@ export const SidebarAPI = {
     })
   },
 
+  // Forwarders
+  createForwarder(sessionId, forwarder) {
+    return browser.runtime.sendMessage({
+      action: "createForwarder",
+      sessionId,
+      forwarder,
+    })
+  },
+
+  updateForwarder(sessionId, forwarderId, updatedForwarder) {
+    return browser.runtime.sendMessage({
+      action: "updateForwarder",
+      sessionId,
+      forwarderId,
+      updatedForwarder,
+    })
+  },
+
+  deleteForwarder(sessionId, forwarderId) {
+    return browser.runtime.sendMessage({
+      action: "deleteForwarder",
+      sessionId,
+      forwarderId,
+    })
+  },
+
   // Optimization
   optimizeSession(sessionId) {
     return browser.runtime.sendMessage({

@@ -138,7 +138,7 @@ export function renderProductFormView({ product = null, session, products = [], 
 
         <div class="mb-6">
           <button id="toggle-compatibility" class="text-sm secondary-text hover:opacity-80 font-medium flex items-center cursor-pointer">
-            <span class="icon icon-chevron_down h-4 w-4 mr-1"></span>
+            <span class="icon icon-down h-4 w-4 mr-1"></span>
             ${t("modals.showCompatibility")}
           </button>
         </div>
