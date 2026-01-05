@@ -139,7 +139,7 @@ const messageHandlers = {
 
   // Optimization
   optimizeSession: async (message) => {
-    return optimizeSession(message.sessionId)
+    return optimizeSession(message.sessionData)
   },
 
   // Open optimization results in a new tab
@@ -368,18 +368,16 @@ function scrapePage(tabId) {
   }).catch(error => console.error("Error checking tab status:", error));
 }
 
-async function optimizeSession(sessionId) {
-  const session = sessions.find((s) => s.id === sessionId)
-  if (!session) return { success: false, error: "Session not found" }
+async function optimizeSession(sessionData) {
+  if (!sessionData) return { success: false, error: "Session data not provided" }
 
   try {
-    // Call backend API
     const response = await fetch("https://your-backend-api.com/optimize", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(session),
+      body: JSON.stringify(sessionData),
     })
 
     if (!response.ok) {

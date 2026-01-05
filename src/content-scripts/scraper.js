@@ -50,7 +50,7 @@ function scrapeCurrentPage() {
           price: getValue(parser.price),
           shippingPrice: getValue(parser.shippingPrice),
           insurancePrice: getValue(parser.insurancePrice),
-          priceCurrency: getValue(parser.priceCurrency),
+          currency: getValue(parser.currency),
           seller: getValue(parser.seller),
           timestamp: new Date().toISOString(),
         }

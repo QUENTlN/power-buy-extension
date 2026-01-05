@@ -191,10 +191,10 @@ export const SidebarAPI = {
   },
 
   // Optimization
-  optimizeSession(sessionId) {
+  optimizeSession(sessionData) {
     return browser.runtime.sendMessage({
       action: "optimizeSession",
-      sessionId,
+      sessionData,
     })
   },
 

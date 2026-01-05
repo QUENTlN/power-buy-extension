@@ -60,7 +60,7 @@ function buildSaveData(formData, session) {
     price: formData.price,
     shippingPrice: formData.shippingPrice,
     insurancePrice: formData.insurancePrice,
-    priceCurrency: formData.priceCurrency,
+    currency: formData.currency,
     seller: formData.seller,
   }
 

@@ -104,6 +104,13 @@
         "defaultDistanceUnit": "Default Distance Unit",
         "saveSettings": "Save Settings"
     },
+    "currencyConversion": {
+        "title": "Currency Conversion Required",
+        "description": "Your session contains prices in multiple currencies. Please provide conversion rates to your default currency.",
+        "example": "Example",
+        "convert": "Convert & Optimize",
+        "invalidRate": "Please enter a valid positive number"
+    },
     "alternatives": {
         "title": "Manage Alternatives",
         "newGroup": "New Alternative Group",

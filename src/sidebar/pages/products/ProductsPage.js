@@ -1,8 +1,11 @@
 import { renderProductsView } from './ProductsView.js'
 import * as actions from './ProductsActions.js'
-import { showNewProductModal, showEditProductModal, showDeleteProductModal } from './modals/index.js'
+import { showNewProductModal, showEditProductModal, showDeleteProductModal, showCurrencyConversionModal } from './modals/index.js'
 import { Store } from '../../state.js'
 import { t } from '../../../shared/i18n.js'
+import { getForeignCurrencies } from '../../utils/currencyDetection.js'
+import { convertSessionCurrency } from '../../utils/currencyConversion.js'
+import { StorageService } from '../../utils/StorageService.js'
 
 export function initProductsPage(app) {
   const session = actions.getSession()
@@ -36,11 +39,47 @@ function attachEventListeners(session) {
   }
 
   document.getElementById("optimize-button")?.addEventListener("click", async () => {
-    const result = await actions.optimizeSession(Store.state.currentSession)
-    if (result.success) {
-      actions.showOptimizationResults(result.result)
-    } else {
-      alert(`${t("optimization.failed")}: ${result.error}`)
+    const session = actions.getSession()
+
+    if (!session) {
+      alert(t("optimization.sessionNotFound") || "Session not found")
+      return
+    }
+
+    try {
+      // Get user's default currency
+      const settings = await StorageService.getUserSettings()
+      const targetCurrency = settings.currency
+
+      // Detect foreign currencies
+      const foreignCurrencies = getForeignCurrencies(session, targetCurrency)
+
+      let sessionToOptimize = session
+
+      // If foreign currencies exist, show conversion modal
+      if (foreignCurrencies.length > 0) {
+        const rates = await showCurrencyConversionModal(foreignCurrencies, targetCurrency)
+
+        // User cancelled
+        if (!rates) {
+          return
+        }
+
+        // Convert session's currencies
+        sessionToOptimize = convertSessionCurrency(session, rates, targetCurrency)
+      }
+
+      // Proceed with optimization using converted session
+      const result = await actions.optimizeSession(sessionToOptimize)
+
+      if (result.success) {
+        actions.showOptimizationResults(result.result)
+      } else {
+        alert(`${t("optimization.failed")}: ${result.error}`)
+      }
+    } catch (error) {
+      console.error("Optimization error:", error)
+      alert(`${t("optimization.failed")}: ${error.message}`)
     }
   })
 

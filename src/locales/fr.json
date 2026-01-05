@@ -104,6 +104,13 @@
         "defaultDistanceUnit": "Unité de distance par défaut",
         "saveSettings": "Enregistrer les paramètres"
     },
+    "currencyConversion": {
+        "title": "Conversion de devise requise",
+        "description": "Votre session contient des prix dans plusieurs devises. Veuillez fournir les taux de conversion vers votre devise par défaut.",
+        "example": "Exemple",
+        "convert": "Convertir et optimiser",
+        "invalidRate": "Veuillez saisir un nombre positif valide"
+    },
     "alternatives": {
         "title": "Gérer les alternatives",
         "newGroup": "Nouveau groupe d'alternatives",

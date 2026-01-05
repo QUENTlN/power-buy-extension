@@ -143,7 +143,7 @@ function buildSaveData(formData, session) {
     shippingPrice: formData.shippingPrice,
     insurancePrice: formData.insurancePrice,
     seller: formData.seller,
-    currency: formData.priceCurrency,
+    currency: formData.currency,
   }
 
   if (formData.customsCategoryId) {

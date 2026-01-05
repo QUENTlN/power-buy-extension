@@ -48,8 +48,8 @@ export function deleteProduct(sessionId, productId) {
   return Store.sync(SidebarAPI.deleteProduct(sessionId, productId))
 }
 
-export function optimizeSession(sessionId) {
-  return SidebarAPI.optimizeSession(sessionId)
+export function optimizeSession(sessionData) {
+  return SidebarAPI.optimizeSession(sessionData)
 }
 
 export function showOptimizationResults(result) {

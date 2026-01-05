@@ -37,8 +37,8 @@ export function renderOfferFormView({ offer = null, session, product = null, scr
 
   // Currency handling
   const getCurrency = () => {
-    if (isEdit) return offer.currency || offer.priceCurrency || ""
-    if (scrapedData) return scrapedData.priceCurrency || ""
+    if (isEdit) return offer.currency || ""
+    if (scrapedData) return scrapedData.currency || ""
     return ""
   }
 

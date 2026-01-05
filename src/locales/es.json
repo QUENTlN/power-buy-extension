@@ -104,6 +104,13 @@
         "defaultDistanceUnit": "Unidad de distancia predeterminada",
         "saveSettings": "Guardar configuración"
     },
+    "currencyConversion": {
+        "title": "Conversión de moneda requerida",
+        "description": "Su sesión contiene precios en múltiples monedas. Proporcione tasas de conversión a su moneda predeterminada.",
+        "example": "Ejemplo",
+        "convert": "Convertir y optimizar",
+        "invalidRate": "Ingrese un número positivo válido"
+    },
     "alternatives": {
         "title": "Gestionar alternativas",
         "newGroup": "Nuevo grupo alternativo",

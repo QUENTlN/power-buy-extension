@@ -12,7 +12,7 @@ export let knownParsers = {
     insurancePrice: {
       strategy: "none",
     },
-    priceCurrency: {
+    currency: {
       strategy: "extractCurrency",
       selector: ".reinventPricePriceToPayMargin",
     },
@@ -33,7 +33,7 @@ export let knownParsers = {
     insurancePrice: {
       strategy: "none",
     },
-    priceCurrency: {
+    currency: {
       strategy: "extractCurrency",
       selector: ".x-price-primary > span:nth-child(1)",
     },
@@ -57,7 +57,7 @@ export let knownParsers = {
     insurancePrice: {
       strategy: "none",
     },
-    priceCurrency: {
+    currency: {
       strategy: "splitPriceCurrency",
       selector: ".product-price-converted",
       param: "currency",
@@ -80,7 +80,7 @@ export let knownParsers = {
       strategy: "extractPrice",
       selector: "#pdp-section-warranties-list > div:nth-child(3) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)",
     },
-    priceCurrency: {
+    currency: {
       strategy: "extractCurrency",
       selector: "#pdp-price-current-integer",
     },

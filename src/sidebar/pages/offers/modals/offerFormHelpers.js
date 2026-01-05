@@ -26,7 +26,7 @@ export function collectOfferFormData(session) {
     price,
     shippingPrice,
     insurancePrice,
-    priceCurrency: currency,
+    currency: currency,
     seller,
   }
 
