@@ -42,8 +42,8 @@ function convertCalculationMethod(calculationMethod, rate) {
 }
 
 /**
- * Converts a page/bundle to target currency
- * @param {Object} item - Page or bundle object
+ * Converts an offer/bundle to target currency
+ * @param {Object} item - Offer or bundle object
  * @param {Object} rates - Conversion rates map
  * @param {string} targetCurrency - Target currency code
  * @returns {Object} Converted item
@@ -171,11 +171,11 @@ function convertForwarder(forwarder, rates, targetCurrency) {
 export function convertSessionCurrency(session, rates, targetCurrency) {
   const convertedSession = deepCloneSession(session)
 
-  // Convert pages
+  // Convert offers
   convertedSession.products?.forEach(product => {
-    if (product.pages) {
-      product.pages = product.pages.map(page =>
-        convertItem(page, rates, targetCurrency)
+    if (product.offers) {
+      product.offers = product.offers.map(offer =>
+        convertItem(offer, rates, targetCurrency)
       )
     }
   })

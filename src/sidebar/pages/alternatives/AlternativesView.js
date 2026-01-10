@@ -40,8 +40,8 @@ function renderGroupCard(session, group) {
                 ${opt.products ? opt.products.map(p => {
                   const prod = session.products.find(product => product.id === p.productId)
                   const qty = p.quantity > 1 ? ` (×${p.quantity})` : ''
-                  return prod ? `${prod.name}${qty}` : t("pages.noProducts")
-                }).join(' + ') : t("pages.noProducts")}
+                  return prod ? `${prod.name}${qty}` : t("offers.noProducts")
+                }).join(' + ') : t("offers.noProducts")}
               </div>
             `).join('')}
           </div>

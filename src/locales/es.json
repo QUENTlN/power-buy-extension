@@ -48,8 +48,8 @@
         "deleteProduct": "Eliminar producto",
         "productName": "Nombre del producto",
         "enterProductName": "Ingrese el nombre del producto",
-        "pages": "Páginas",
-        "page": "Página",
+        "offers": "Ofertas",
+        "offer": "Oferta",
         "bundles": "Paquetes",
         "bundle": "Paquete",
         "optimize": "Optimizar",
@@ -59,14 +59,14 @@
         "forwarders": "Reenviadores",
         "importFees": "Tasas de importación",
         "quantity": "Cantidad",
-        "confirmDelete": "¿Está seguro de que desea eliminar este producto? También se eliminarán todas las páginas asociadas.",
+        "confirmDelete": "¿Está seguro de que desea eliminar este producto? También se eliminarán todas las ofertas asociadas.",
         "deleteButton": "Eliminar producto"
     },
-    "pages": {
-        "addPage": "Agregar página",
-        "editPage": "Editar página",
-        "deletePage": "Eliminar página",
-        "noPages": "No se han agregado páginas",
+    "offers": {
+        "addOffer": "Agregar oferta",
+        "editOffer": "Editar oferta",
+        "deleteOffer": "Eliminar oferta",
+        "noOffers": "No se han agregado ofertas",
         "seller": "Vendedor",
         "price": "Precio",
         "shipping": "Envío",
@@ -80,10 +80,10 @@
         "free": "Gratis",
         "na": "N/A",
         "openInNewTab": "Abrir en nueva pestaña",
-        "editPageTitle": "Editar página",
-        "deletePageTitle": "Eliminar página",
-        "confirmDelete": "¿Está seguro de que desea eliminar esta página?",
-        "deleteButton": "Eliminar página",
+        "editOfferTitle": "Editar oferta",
+        "deleteOfferTitle": "Eliminar oferta",
+        "confirmDelete": "¿Está seguro de que desea eliminar esta oferta?",
+        "deleteButton": "Eliminar oferta",
         "productsInBundle": "Productos en el paquete",
         "noProducts": "Sin productos"
     },
@@ -249,7 +249,7 @@
         "selectForwarder": "Seleccionar un reenviador"
     },
     "importFees": {
-        "subtitle": "Gestione las tasas de importación para productos internacionales",
+        "subtitle": "Gestione las tasas de importación para productos internacionales"
     },
     "forwarders": {
         "title": "Reenviadores",
@@ -277,9 +277,9 @@
     },
     "scraping": {
         "title": "Agregar al producto",
-        "saveAsPage": "Guardar como página",
+        "saveAsOffer": "Guardar como oferta",
         "saveAsBundle": "Guardar como paquete",
-        "pageOrBundle": "¿Es esto una página o un paquete?",
+        "offerOrBundle": "¿Es esto una oferta o un paquete?",
         "productSelection": "Producto",
         "selectProduct": "Seleccione un producto",
         "bundleProducts": "Productos del paquete",
@@ -316,7 +316,7 @@
         "enterShipping": "Ingrese los gastos de envío",
         "enterInsurance": "Ingrese los gastos de seguro",
         "selectCurrency": "Seleccione la moneda",
-        "addPageFor": "Agregar página para",
+        "addOfferFor": "Agregar oferta para",
         "noKnownParser": "Este sitio web no tiene un analizador conocido. Ingrese los detalles manualmente.",
         "isBundle": "¿Es esto un paquete?",
         "bundleExplanation": "Un paquete contiene varios productos con un solo precio y costo de envío.",

@@ -5,10 +5,10 @@ export function navigateToSessions() {
   Store.setState({ currentView: 'sessions' })
 }
 
-export function navigateToPages(productId) {
+export function navigateToOffers(productId) {
   Store.setState({
     currentProduct: productId,
-    currentView: 'pages'
+    currentView: 'offers'
   })
 }
 

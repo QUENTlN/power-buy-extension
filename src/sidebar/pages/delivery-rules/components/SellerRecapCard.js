@@ -149,7 +149,8 @@ export function renderSellerRecapCard(session, seller, rule) {
         <p class="text-xs font-semibold secondary-text uppercase tracking-wide">${t("deliveryRules.sameFee")}</p>
         ${renderCalcMethodDetails(rule.calculationMethod, currency)}
     `
-    if (rule.globalFreeShipping && rule.globalFreeShippingThreshold) {
+    // Display free shipping threshold if it exists
+    if (rule.globalFreeShippingThreshold !== null && rule.globalFreeShippingThreshold !== undefined && rule.globalFreeShippingThreshold !== '') {
       detailsHtml += `
         <div class="pt-2 mt-2 border-t border-default">
           <p class="text-xs secondary-text">
@@ -180,7 +181,8 @@ export function renderSellerRecapCard(session, seller, rule) {
           </div>
           ${renderCalcMethodDetails(group.calculationMethod, currency, false)}
       `
-      if (group.freeShipping && group.freeShippingThreshold) {
+      // Display free shipping threshold if it exists
+      if (group.freeShippingThreshold !== null && group.freeShippingThreshold !== undefined && group.freeShippingThreshold !== '') {
         detailsHtml += `
           <div class="pt-1 mt-1 border-t border-default/50">
             <p class="text-xs secondary-text">

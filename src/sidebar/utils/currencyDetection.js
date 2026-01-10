@@ -6,10 +6,10 @@
 export function detectAllCurrencies(session) {
   const currencies = new Set()
 
-  // Pages
+  // Offers
   session.products?.forEach(product => {
-    product.pages?.forEach(page => {
-      if (page.currency) currencies.add(page.currency)
+    product.offers?.forEach(offer => {
+      if (offer.currency) currencies.add(offer.currency)
     })
   })
 

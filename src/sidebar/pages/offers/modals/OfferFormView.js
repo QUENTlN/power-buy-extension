@@ -20,9 +20,9 @@ export function renderOfferFormView({ offer = null, session, product = null, scr
   // Determine title
   let title
   if (isEdit) {
-    title = isBundle ? t("bundles.editBundle") : t("pages.editPage")
+    title = isBundle ? t("bundles.editBundle") : t("offers.editPage")
   } else {
-    title = t("modals.addPageFor") + " " + (product?.name || "")
+    title = t("modals.addOfferFor") + " " + (product?.name || "")
   }
 
   // Source data for form values
@@ -162,10 +162,10 @@ function renderProductSelection(session, product, offer, isEdit, isBundle) {
 function renderUrlField(url) {
   return `
     <div class="mb-6">
-      <label for="page-url" class="block text-sm font-medium secondary-text mb-1">${t("modals.url")}</label>
+      <label for="offer-url" class="block text-sm font-medium secondary-text mb-1">${t("modals.url")}</label>
       <input
         type="text"
-        id="page-url"
+        id="offer-url"
         value="${url}"
         readonly
         class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -177,10 +177,10 @@ function renderUrlField(url) {
 function renderPriceFields(getValue) {
   return `
     <div class="mb-6">
-      <label for="page-price" class="block text-sm font-medium secondary-text mb-1">${t("modals.price")}</label>
+      <label for="offer-price" class="block text-sm font-medium secondary-text mb-1">${t("modals.price")}</label>
       <input
         type="text"
-        id="page-price"
+        id="offer-price"
         value="${getValue("price")}"
         placeholder="${t("modals.enterPrice")}"
         class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -188,10 +188,10 @@ function renderPriceFields(getValue) {
     </div>
 
     <div class="mb-6">
-      <label for="page-shipping" class="block text-sm font-medium secondary-text mb-1">${t("modals.shippingPrice")}</label>
+      <label for="offer-shipping" class="block text-sm font-medium secondary-text mb-1">${t("modals.shippingPrice")}</label>
       <input
         type="text"
-        id="page-shipping"
+        id="offer-shipping"
         value="${getValue("shippingPrice")}"
         placeholder="${t("modals.enterShipping")}"
         class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -199,10 +199,10 @@ function renderPriceFields(getValue) {
     </div>
 
     <div class="mb-6">
-      <label for="page-insurance" class="block text-sm font-medium secondary-text mb-1">${t("modals.insurancePrice")}</label>
+      <label for="offer-insurance" class="block text-sm font-medium secondary-text mb-1">${t("modals.insurancePrice")}</label>
       <input
         type="text"
-        id="page-insurance"
+        id="offer-insurance"
         value="${getValue("insurancePrice")}"
         placeholder="${t("modals.enterInsurance")}"
         class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -214,9 +214,9 @@ function renderPriceFields(getValue) {
 function renderCurrencyField(currency) {
   return `
     <div class="mb-6">
-      <label for="page-currency" class="block text-sm font-medium secondary-text mb-1">${t("modals.currency")}</label>
+      <label for="offer-currency" class="block text-sm font-medium secondary-text mb-1">${t("modals.currency")}</label>
       <select
-        id="page-currency"
+        id="offer-currency"
         class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
       >
         ${CURRENCIES.map(c => `<option value="${c.code}" ${currency === c.code ? "selected" : ""}>${c.label} - ${c.symbol}</option>`).join('')}
@@ -228,10 +228,10 @@ function renderCurrencyField(currency) {
 function renderSellerField(seller) {
   return `
     <div class="mb-6">
-      <label for="page-seller" class="block text-sm font-medium secondary-text mb-1">${t("modals.seller")}</label>
+      <label for="offer-seller" class="block text-sm font-medium secondary-text mb-1">${t("modals.seller")}</label>
       <input
         type="text"
-        id="page-seller"
+        id="offer-seller"
         value="${seller}"
         placeholder="${t("modals.enterSeller")}"
         class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -300,14 +300,14 @@ function renderWeightField(data, product, isBundle) {
       <div class="flex space-x-2">
         <input
           type="number"
-          id="page-weight"
+          id="offer-weight"
           value="${data.weight || ''}"
           placeholder="${placeholder}"
           step="0.01"
           min="0"
           class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
         >
-        <select id="page-weight-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+        <select id="offer-weight-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
           ${WEIGHT_UNITS.map(u => `<option value="${u.value}" ${(data.weightUnit || product?.weightUnit || DEFAULT_WEIGHT_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
         </select>
       </div>
@@ -323,9 +323,9 @@ function renderVolumeField(data, product, isBundle) {
   return `
     <div class="mb-6">
       <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.volume")}</label>
-      <div id="page-volume-input" class="flex space-x-2">
-        <input type="number" id="page-volume-single" value="${data.volume || ''}" placeholder="${placeholder}" step="0.01" min="0" class="flex-1 min-w-0 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-        <select id="page-volume-unit" class="max-w-[50%] px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary truncate">
+      <div id="offer-volume-input" class="flex space-x-2">
+        <input type="number" id="offer-volume-single" value="${data.volume || ''}" placeholder="${placeholder}" step="0.01" min="0" class="flex-1 min-w-0 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+        <select id="offer-volume-unit" class="max-w-[50%] px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary truncate">
           ${VOLUME_UNITS.map(u => `<option value="${u.value}" ${(data.volumeUnit || product?.volumeUnit || DEFAULT_VOLUME_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
         </select>
       </div>
@@ -341,13 +341,13 @@ function renderDimensionField(data, product, isBundle) {
   return `
     <div class="mb-6">
       <label class="block text-sm font-medium secondary-text mb-1">${t("attributes.dimension")}</label>
-      <select id="page-dimension-unit" class="w-full px-4 py-2 mb-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+      <select id="offer-dimension-unit" class="w-full px-4 py-2 mb-2 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
         ${DIMENSION_UNITS.map(u => `<option value="${u.value}" ${(data.dimensionUnit || product?.dimensionUnit || DEFAULT_DIMENSION_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
       </select>
       <div class="grid grid-cols-3 gap-2">
-        <input type="number" id="page-dim-length" value="${data.length || ''}" placeholder="${lengthPlaceholder}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-        <input type="number" id="page-dim-width" value="${data.width || ''}" placeholder="${widthPlaceholder}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-        <input type="number" id="page-dim-height" value="${data.height || ''}" placeholder="${heightPlaceholder}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+        <input type="number" id="offer-dim-length" value="${data.length || ''}" placeholder="${lengthPlaceholder}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+        <input type="number" id="offer-dim-width" value="${data.width || ''}" placeholder="${widthPlaceholder}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+        <input type="number" id="offer-dim-height" value="${data.height || ''}" placeholder="${heightPlaceholder}" step="0.01" min="0" class="w-full px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
       </div>
     </div>
   `
@@ -360,13 +360,13 @@ function renderDistanceField(data) {
       <div class="flex space-x-2">
         <input
           type="number"
-          id="page-distance"
+          id="offer-distance"
           value="${data.distance || ''}"
           step="0.01"
           min="0"
           class="flex-1 px-4 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
         >
-        <select id="page-distance-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+        <select id="offer-distance-unit" class="px-2 py-3 border border-default input-bg card-text rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
           ${DISTANCE_UNITS.map(u => `<option value="${u.value}" ${(data.distanceUnit || DEFAULT_DISTANCE_UNIT) === u.value ? "selected" : ""}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
         </select>
       </div>

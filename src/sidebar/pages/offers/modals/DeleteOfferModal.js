@@ -3,12 +3,12 @@ import * as actions from '../OffersActions.js'
 import { Store } from '../../../state.js'
 import { showConfirmationModal } from '../../../utils/index.js'
 
-export function showDeletePageModal(pageId) {
+export function showDeleteOfferModal(offerId) {
   showConfirmationModal({
-    title: t("pages.deletePage"),
-    message: t("pages.confirmDelete"),
+    title: t("offers.deleteOffer"),
+    message: t("offers.confirmDelete"),
     onConfirm: async () => {
-      await actions.deletePage(Store.state.currentSession, Store.state.currentProduct, pageId)
+      await actions.deleteOffer(Store.state.currentSession, Store.state.currentProduct, offerId)
     }
   })
 }

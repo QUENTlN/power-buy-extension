@@ -4,9 +4,9 @@ export function getUniqueSellers(session) {
   const sellers = new Set()
 
   session.products.forEach((product) => {
-    product.pages.forEach((page) => {
-      if (page.seller) {
-        sellers.add(page.seller)
+    product.offers.forEach((offer) => {
+      if (offer.seller) {
+        sellers.add(offer.seller)
       }
     })
   })
@@ -52,6 +52,6 @@ export function getRule(session, seller) {
 
 export function getSellerProducts(session, seller) {
   return session.products.filter(p =>
-    p.pages.some(page => page.seller === seller)
+    p.offers.some(offer => offer.seller === seller)
   )
 }

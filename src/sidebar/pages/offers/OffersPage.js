@@ -2,7 +2,7 @@ import { renderOffersView } from './OffersView.js'
 import * as actions from './OffersActions.js'
 import {
   showEditOfferModal,
-  showDeletePageModal,
+  showDeleteOfferModal,
   showDeleteBundleModal,
   showScrapedDataModal
 } from './modals/index.js'
@@ -32,12 +32,12 @@ export function initOffersPage(app) {
 function attachEventListeners(session, product) {
   document.getElementById("back-button")?.addEventListener("click", actions.navigateToProducts)
 
-  document.getElementById("add-page-button")?.addEventListener("click", actions.requestScrapeForCurrentTab)
+  document.getElementById("add-offer-button")?.addEventListener("click", actions.requestScrapeForCurrentTab)
 
-  // Delete page buttons
-  document.querySelectorAll(".delete-page-button").forEach(button => {
+  // Delete offer buttons
+  document.querySelectorAll(".delete-offer-button").forEach(button => {
     button.addEventListener("click", () => {
-      showDeletePageModal(button.dataset.id)
+      showDeleteOfferModal(button.dataset.id)
     })
   })
 
@@ -48,11 +48,11 @@ function attachEventListeners(session, product) {
     })
   })
 
-  // Edit page buttons
-  document.querySelectorAll(".edit-page-button").forEach(button => {
+  // Edit offer buttons
+  document.querySelectorAll(".edit-offer-button").forEach(button => {
     button.addEventListener("click", () => {
-      const page = product.pages.find(p => p.id === button.dataset.id)
-      showEditOfferModal(page, session, product)
+      const offer = product.offers.find(o => o.id === button.dataset.id)
+      showEditOfferModal(offer, session, product)
     })
   })
 
@@ -65,7 +65,7 @@ function attachEventListeners(session, product) {
   })
 
   // Open in new tab buttons
-  document.querySelectorAll('.open-page-button').forEach(button => {
+  document.querySelectorAll('.open-offer-button').forEach(button => {
     button.addEventListener('click', (e) => {
       e.stopPropagation()
       actions.openInNewTab(button.dataset.url)

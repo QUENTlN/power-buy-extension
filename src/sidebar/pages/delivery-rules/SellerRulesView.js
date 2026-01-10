@@ -36,11 +36,11 @@ export function renderGroupItem(session, seller, group, gIdx, safeSellerId, getS
                 <div class="flex items-center justify-between">
                     <span class="text-sm font-medium card-text">${t("deliveryRules.freeDeliveryCondition")}</span>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" class="group-free-shipping-checkbox sr-only peer" ${group.freeShipping ? 'checked' : ''}>
+                        <input type="checkbox" class="group-free-shipping-checkbox sr-only peer" ${group.freeShippingThreshold !== null && group.freeShippingThreshold !== undefined && group.freeShippingThreshold !== '' ? 'checked' : ''}>
                         <div class="toggle-switch"></div>
                     </label>
                 </div>
-                <div class="mt-3 group-free-shipping-threshold" style="display: ${group.freeShipping ? 'block' : 'none'}">
+                <div class="mt-3 group-free-shipping-threshold" style="display: ${group.freeShippingThreshold !== null && group.freeShippingThreshold !== undefined && group.freeShippingThreshold !== '' ? 'block' : 'none'}">
                     <label class="block text-xs secondary-text mb-1 ml-1">${t("deliveryRules.freeDeliveryThreshold")}</label>
                     <input type="number" class="w-full px-3 py-2 border border-default input-bg card-text rounded-md group-free-shipping-input focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" value="${group.freeShippingThreshold || ''}" placeholder="0.00" step="0.01">
                 </div>
@@ -98,8 +98,8 @@ export function renderRuleCurrencySelector(session, rule) {
 }
 
 export function renderGlobalFreeShippingContainer(rule, billingMethod) {
-    const globalFree = rule.globalFreeShipping || false
     const globalThreshold = rule.globalFreeShippingThreshold || ''
+    const hasThreshold = globalThreshold !== null && globalThreshold !== undefined && globalThreshold !== ''
     const visible = billingMethod === 'global' || billingMethod === 'groups'
 
     return `
@@ -107,7 +107,7 @@ export function renderGlobalFreeShippingContainer(rule, billingMethod) {
             ${renderToggleSwitch({
                 id: 'global-free-shipping-checkbox',
                 label: t("deliveryRules.freeDeliveryCondition"),
-                checked: globalFree,
+                checked: hasThreshold,
                 additionalClasses: 'global-free-shipping-checkbox'
             })}
             ${renderConditionalThresholdInput({
@@ -115,7 +115,7 @@ export function renderGlobalFreeShippingContainer(rule, billingMethod) {
                 inputClass: 'global-free-shipping-input',
                 label: t("deliveryRules.freeDeliveryThreshold"),
                 value: globalThreshold,
-                visible: globalFree
+                visible: hasThreshold
             })}
         </div>
     `

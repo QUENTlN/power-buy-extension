@@ -8,12 +8,12 @@ import { validateRequiredField, clearAllErrors } from '../../../modals.js'
  * @returns {Object} Form data including products array
  */
 export function collectOfferFormData(session) {
-  const url = document.getElementById("page-url").value.trim()
-  const priceStr = document.getElementById("page-price").value.trim()
-  const shippingStr = document.getElementById("page-shipping").value.trim()
-  const insuranceStr = document.getElementById("page-insurance").value.trim()
-  const currency = document.getElementById("page-currency").value
-  const seller = document.getElementById("page-seller").value.trim()
+  const url = document.getElementById("offer-url").value.trim()
+  const priceStr = document.getElementById("offer-price").value.trim()
+  const shippingStr = document.getElementById("offer-shipping").value.trim()
+  const insuranceStr = document.getElementById("offer-insurance").value.trim()
+  const currency = document.getElementById("offer-currency").value
+  const seller = document.getElementById("offer-seller").value.trim()
 
   // Parse prices
   const price = parseFloat(priceStr) || 0
@@ -56,8 +56,8 @@ export function collectOfferFormData(session) {
 
   // Weight
   if (session.manageWeight) {
-    const weight = parseFloat(document.getElementById("page-weight")?.value)
-    const weightUnit = document.getElementById("page-weight-unit")?.value
+    const weight = parseFloat(document.getElementById("offer-weight")?.value)
+    const weightUnit = document.getElementById("offer-weight-unit")?.value
     if (!isNaN(weight) && weight > 0) {
       data.weight = weight
       data.weightUnit = weightUnit
@@ -66,8 +66,8 @@ export function collectOfferFormData(session) {
 
   // Volume
   if (session.manageVolume) {
-    const volume = parseFloat(document.getElementById("page-volume-single")?.value)
-    const volumeUnit = document.getElementById("page-volume-unit")?.value
+    const volume = parseFloat(document.getElementById("offer-volume-single")?.value)
+    const volumeUnit = document.getElementById("offer-volume-unit")?.value
     if (!isNaN(volume) && volume > 0) {
       data.volume = volume
       data.volumeUnit = volumeUnit
@@ -76,10 +76,10 @@ export function collectOfferFormData(session) {
 
   // Dimension
   if (session.manageDimension) {
-    const length = parseFloat(document.getElementById("page-dim-length")?.value)
-    const width = parseFloat(document.getElementById("page-dim-width")?.value)
-    const height = parseFloat(document.getElementById("page-dim-height")?.value)
-    const dimensionUnit = document.getElementById("page-dimension-unit")?.value
+    const length = parseFloat(document.getElementById("offer-dim-length")?.value)
+    const width = parseFloat(document.getElementById("offer-dim-width")?.value)
+    const height = parseFloat(document.getElementById("offer-dim-height")?.value)
+    const dimensionUnit = document.getElementById("offer-dimension-unit")?.value
     if (!isNaN(length) && length > 0) data.length = length
     if (!isNaN(width) && width > 0) data.width = width
     if (!isNaN(height) && height > 0) data.height = height
@@ -90,8 +90,8 @@ export function collectOfferFormData(session) {
 
   // Distance
   if (session.manageDistance) {
-    const distance = parseFloat(document.getElementById("page-distance")?.value)
-    const distanceUnit = document.getElementById("page-distance-unit")?.value
+    const distance = parseFloat(document.getElementById("offer-distance")?.value)
+    const distanceUnit = document.getElementById("offer-distance-unit")?.value
     if (!isNaN(distance) && distance > 0) {
       data.distance = distance
       data.distanceUnit = distanceUnit
@@ -112,10 +112,10 @@ export function validateOfferForm(modal, session) {
   clearAllErrors(modal)
 
   // URL is required
-  if (!validateRequiredField('page-url', t("modals.url"))) return false
+  if (!validateRequiredField('offer-url', t("modals.url"))) return false
 
   // Price is required
-  if (!validateRequiredField('page-price', t("modals.price"))) return false
+  if (!validateRequiredField('offer-price', t("modals.price"))) return false
 
   // Check product selection if in bundle mode
   const isBundleToggle = document.getElementById("is-bundle")

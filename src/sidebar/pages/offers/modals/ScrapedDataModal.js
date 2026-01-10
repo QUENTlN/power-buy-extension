@@ -5,7 +5,7 @@ import { Store } from '../../../state.js'
 import { createModal } from '../../../utils/index.js'
 
 /**
- * Shows a modal to create a new Page or Bundle from scraped data.
+ * Shows a modal to create a new Offer or Bundle from scraped data.
  *
  * @param {Object} session - Session containing products and settings
  * @param {Object} product - Current product for which to create the offer
@@ -45,9 +45,9 @@ async function saveOffer(modal, session, product) {
     saveData.products = formData.products
     await actions.createBundle(sessionId, saveData)
   } else {
-    // Create as page (1 product)
+    // Create as offer (1 product)
     const targetProductId = getSelectedProductId() || product.id
-    await actions.createPage(sessionId, targetProductId, saveData)
+    await actions.createOffer(sessionId, targetProductId, saveData)
   }
 
   actions.clearScrapedData()

@@ -76,7 +76,7 @@ function renderProductCard(product, session) {
         <div class="flex-1 min-w-0 mr-4 cursor-pointer">
           <h2 class="text-xl font-medium card-text truncate">${product.name}${(session.manageQuantity !== false && product.quantity && product.quantity > 1) ? ` (×${product.quantity})` : ''}</h2>
           <p class="muted-text text-md truncate">
-            ${product.pages.length} ${t("products.pages")}
+            ${product.offers.length} ${t("products.offers")}
             ${bundleCount > 0 ? ` • ${bundleCount} ${t("products.bundles")}` : ''}
           </p>
         </div>

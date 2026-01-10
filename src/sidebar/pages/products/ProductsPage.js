@@ -83,11 +83,11 @@ function attachEventListeners(session) {
     }
   })
 
-  // Product item clicks (navigate to pages)
+  // Product item clicks (navigate to offers)
   document.querySelectorAll(".product-item").forEach(item => {
     item.addEventListener("click", (e) => {
       if (!e.target.closest(".edit-button") && !e.target.closest(".delete-button")) {
-        actions.navigateToPages(item.dataset.id)
+        actions.navigateToOffers(item.dataset.id)
       }
     })
   })

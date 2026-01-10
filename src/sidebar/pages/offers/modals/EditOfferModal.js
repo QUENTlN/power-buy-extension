@@ -7,12 +7,12 @@ import { createModal, StorageService } from '../../../utils/index.js'
 import { clearAllErrors, validateRequiredField, showFieldError } from '../../../modals.js'
 
 /**
- * Shows a modal to edit an existing Page or Bundle.
- * Handles automatic conversion between Page and Bundle based on product selection.
+ * Shows a modal to edit an existing Offer or Bundle.
+ * Handles automatic conversion between Offer and Bundle based on product selection.
  *
- * @param {Object} offer - Existing page or bundle to edit
+ * @param {Object} offer - Existing offer or bundle to edit
  * @param {Object} session - Session containing products and settings
- * @param {Object|null} product - Current product (for pages)
+ * @param {Object|null} product - Current product (for offers)
  */
 export async function showEditOfferModal(offer, session, product = null) {
   const isOriginallyBundle = offer.products && offer.products.length > 0
@@ -36,19 +36,19 @@ async function initializeDefaults(offer) {
   const defaults = await StorageService.getDefaults()
 
   if (!offer.weightUnit) {
-    const el = document.getElementById("page-weight-unit")
+    const el = document.getElementById("offer-weight-unit")
     if (el) el.value = defaults.weightUnit
   }
   if (!offer.volumeUnit) {
-    const el = document.getElementById("page-volume-unit")
+    const el = document.getElementById("offer-volume-unit")
     if (el) el.value = defaults.volumeUnit
   }
   if (!offer.dimensionUnit) {
-    const el = document.getElementById("page-dimension-unit")
+    const el = document.getElementById("offer-dimension-unit")
     if (el) el.value = defaults.dimensionUnit
   }
   if (!offer.distanceUnit) {
-    const el = document.getElementById("page-distance-unit")
+    const el = document.getElementById("offer-distance-unit")
     if (el) el.value = defaults.distanceUnit
   }
 }
@@ -78,21 +78,21 @@ async function saveOffer(modal, offer, session, product, isOriginallyBundle) {
       // Was bundle, stays bundle → update
       await actions.updateBundle(sessionId, offer.id, saveData)
     } else {
-      // Was page, becomes bundle → delete page, create bundle
-      await actions.deletePage(sessionId, product.id, offer.id)
+      // Was offer, becomes bundle → delete offer, create bundle
+      await actions.deleteOffer(sessionId, product.id, offer.id)
       await actions.createBundle(sessionId, saveData)
     }
   } else {
-    // Should be a page (1 product)
+    // Should be an offer (1 product)
     const targetProductId = getSelectedProductId() || product?.id || Store.state.currentProduct
 
     if (isOriginallyBundle) {
-      // Was bundle, becomes page → delete bundle, create page
+      // Was bundle, becomes offer → delete bundle, create offer
       await actions.deleteBundle(sessionId, offer.id)
-      await actions.createPage(sessionId, targetProductId, saveData)
+      await actions.createOffer(sessionId, targetProductId, saveData)
     } else {
-      // Was page, stays page → update
-      await actions.updatePage(sessionId, product?.id || Store.state.currentProduct, offer.id, saveData)
+      // Was offer, stays offer → update
+      await actions.updateOffer(sessionId, product?.id || Store.state.currentProduct, offer.id, saveData)
     }
   }
 
@@ -102,10 +102,10 @@ async function saveOffer(modal, offer, session, product, isOriginallyBundle) {
 function validateForm(session) {
   let isValid = true
 
-  if (!validateRequiredField('page-price', t("pages.price"))) isValid = false
-  if (!validateRequiredField('page-shipping', t("modals.shippingPrice"))) isValid = false
-  if (!validateRequiredField('page-insurance', t("modals.insurancePrice"))) isValid = false
-  if (!validateRequiredField('page-seller', t("pages.seller"))) isValid = false
+  if (!validateRequiredField('offer-price', t("offers.price"))) isValid = false
+  if (!validateRequiredField('offer-shipping', t("modals.shippingPrice"))) isValid = false
+  if (!validateRequiredField('offer-insurance', t("modals.insurancePrice"))) isValid = false
+  if (!validateRequiredField('offer-seller', t("offers.seller"))) isValid = false
 
   if (session.manageQuantity !== false) {
     const itemsPerPurchaseValue = document.getElementById("items-per-purchase")?.value

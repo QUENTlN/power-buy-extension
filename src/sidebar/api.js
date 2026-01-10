@@ -55,32 +55,32 @@ export const SidebarAPI = {
     })
   },
 
-  // Pages
-  createPage(sessionId, productId, page) {
+  // Offers
+  createOffer(sessionId, productId, offer) {
     return browser.runtime.sendMessage({
-      action: "createPage",
+      action: "createOffer",
       sessionId,
       productId,
-      page,
+      offer,
     })
   },
 
-  deletePage(sessionId, productId, pageId) {
+  deleteOffer(sessionId, productId, offerId) {
     return browser.runtime.sendMessage({
-      action: "deletePage",
+      action: "deleteOffer",
       sessionId,
       productId,
-      pageId,
+      offerId,
     })
   },
 
-  updatePage(sessionId, productId, pageId, updatedPage) {
+  updateOffer(sessionId, productId, offerId, updatedOffer) {
     return browser.runtime.sendMessage({
-      action: "updatePage",
+      action: "updateOffer",
       sessionId,
       productId,
-      pageId,
-      updatedPage,
+      offerId,
+      updatedOffer,
     })
   },
 

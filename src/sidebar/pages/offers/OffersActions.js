@@ -23,12 +23,12 @@ export function requestScrapeForCurrentTab() {
   })
 }
 
-export function updatePage(sessionId, productId, pageId, pageData) {
-  return Store.sync(SidebarAPI.updatePage(sessionId, productId, pageId, pageData))
+export function updateOffer(sessionId, productId, offerId, offerData) {
+  return Store.sync(SidebarAPI.updateOffer(sessionId, productId, offerId, offerData))
 }
 
-export function deletePage(sessionId, productId, pageId) {
-  return Store.sync(SidebarAPI.deletePage(sessionId, productId, pageId))
+export function deleteOffer(sessionId, productId, offerId) {
+  return Store.sync(SidebarAPI.deleteOffer(sessionId, productId, offerId))
 }
 
 export function updateBundle(sessionId, bundleId, bundleData) {
@@ -39,8 +39,8 @@ export function deleteBundle(sessionId, bundleId) {
   return Store.sync(SidebarAPI.deleteBundle(sessionId, bundleId))
 }
 
-export function createPage(sessionId, productId, pageData) {
-  return Store.sync(SidebarAPI.createPage(sessionId, productId, pageData))
+export function createOffer(sessionId, productId, offerData) {
+  return Store.sync(SidebarAPI.createOffer(sessionId, productId, offerData))
 }
 
 export function createBundle(sessionId, bundleData) {

@@ -55,17 +55,17 @@ const messageHandlers = {
     return { success: true, sessions, currentSession }
   },
 
-  // Pages
-  createPage: (message) => {
-    createPage(message.sessionId, message.productId, message.page)
+  // Offers
+  createOffer: (message) => {
+    createOffer(message.sessionId, message.productId, message.offer)
     return { success: true, sessions, currentSession }
   },
-  deletePage: (message) => {
-    deletePage(message.sessionId, message.productId, message.pageId)
+  deleteOffer: (message) => {
+    deleteOffer(message.sessionId, message.productId, message.offerId)
     return { success: true, sessions, currentSession }
   },
-  updatePage: (message) => {
-    updatePage(message.sessionId, message.productId, message.pageId, message.updatedPage)
+  updateOffer: (message) => {
+    updateOffer(message.sessionId, message.productId, message.offerId, message.updatedOffer)
     return { success: true, sessions, currentSession }
   },
 
@@ -241,7 +241,7 @@ function createProduct(sessionId, product) {
   const session = sessions.find((s) => s.id === sessionId)
   if (session) {
     product.id = Date.now().toString()
-    product.pages = []
+    product.offers = []
     product.quantity = product.quantity || 1
     session.products.push(product)
     saveToStorage()
@@ -256,42 +256,42 @@ function deleteProduct(sessionId, productId) {
   }
 }
 
-// Page management
-function createPage(sessionId, productId, page) {
+// Offer management
+function createOffer(sessionId, productId, offer) {
   const session = sessions.find((s) => s.id === sessionId)
   if (session) {
     const product = session.products.find((p) => p.id === productId)
     if (product) {
-      page.id = Date.now().toString()
-      page.itemsPerPurchase = page.itemsPerPurchase || 1
-      if (page.maxPerPurchase !== undefined && page.maxPerPurchase !== null && page.maxPerPurchase !== '') {
-        page.maxPerPurchase = Number(page.maxPerPurchase)
+      offer.id = Date.now().toString()
+      offer.itemsPerPurchase = offer.itemsPerPurchase || 1
+      if (offer.maxPerPurchase !== undefined && offer.maxPerPurchase !== null && offer.maxPerPurchase !== '') {
+        offer.maxPerPurchase = Number(offer.maxPerPurchase)
       }
-      product.pages.push(page)
+      product.offers.push(offer)
       saveToStorage()
     }
   }
 }
 
-function deletePage(sessionId, productId, pageId) {
+function deleteOffer(sessionId, productId, offerId) {
   const session = sessions.find((s) => s.id === sessionId)
   if (session) {
     const product = session.products.find((p) => p.id === productId)
     if (product) {
-      product.pages = product.pages.filter((p) => p.id !== pageId)
+      product.offers = product.offers.filter((o) => o.id !== offerId)
       saveToStorage()
     }
   }
 }
 
-function updatePage(sessionId, productId, pageId, updatedPage) {
+function updateOffer(sessionId, productId, offerId, updatedOffer) {
   const session = sessions.find((s) => s.id === sessionId)
   if (session) {
     const product = session.products.find((p) => p.id === productId)
     if (product) {
-      const pageIndex = product.pages.findIndex((p) => p.id === pageId)
-      if (pageIndex !== -1) {
-        product.pages[pageIndex] = { ...product.pages[pageIndex], ...updatedPage }
+      const offerIndex = product.offers.findIndex((o) => o.id === offerId)
+      if (offerIndex !== -1) {
+        product.offers[offerIndex] = { ...product.offers[offerIndex], ...updatedOffer }
         saveToStorage()
       }
     }

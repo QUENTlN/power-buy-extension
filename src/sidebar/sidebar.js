@@ -65,7 +65,7 @@ function renderApp() {
     case "products":
       initProductsPage(app)
       break
-    case "pages":
+    case "offers":
       initOffersPage(app)
       break
     case "settings":

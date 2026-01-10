@@ -51,7 +51,7 @@ export function getRule(session, seller) {
 
 export function getSellerProducts(session, seller) {
     return session.products.filter(p =>
-        p.pages.some(page => page.seller === seller)
+        p.offers.some(offer => offer.seller === seller)
     )
 }
 
@@ -347,13 +347,16 @@ export function saveSellerRules(seller, safeSellerId, session) {
         const billingRadio = document.querySelector(`input[name="billing-method-${safeSellerId}"]:checked`)
         currentRule.billingMethod = billingRadio ? billingRadio.value : 'global'
 
-        // Extract global free shipping settings (available for both 'global' and 'groups' modes)
+        // Extract global free shipping threshold (available for both 'global' and 'groups' modes)
+        // The checkbox state is deduced from whether a threshold exists, so we only save the threshold
         if (currentRule.billingMethod === 'global' || currentRule.billingMethod === 'groups') {
             const globalCb = document.querySelector('.global-free-shipping-checkbox')
-            currentRule.globalFreeShipping = globalCb ? globalCb.checked : false
-            if (currentRule.globalFreeShipping) {
+            if (globalCb && globalCb.checked) {
                 const globalInput = document.querySelector('.global-free-shipping-input')
-                currentRule.globalFreeShippingThreshold = parseFloat(globalInput.value) || 0
+                const threshold = parseFloat(globalInput.value)
+                if (!isNaN(threshold) && threshold >= 0) {
+                    currentRule.globalFreeShippingThreshold = threshold
+                }
             }
         }
 
@@ -363,14 +366,27 @@ export function saveSellerRules(seller, safeSellerId, session) {
             currentRule.groups = []
             document.querySelectorAll('.group-item').forEach((groupDiv, idx) => {
                 const name = groupDiv.querySelector('.group-name-input').value
-                const freeShipping = groupDiv.querySelector('.group-free-shipping-checkbox').checked
-                const freeThreshold = parseFloat(groupDiv.querySelector('.group-free-shipping-input').value) || 0
+                const freeShippingCb = groupDiv.querySelector('.group-free-shipping-checkbox')
                 const productIds = Array.from(groupDiv.querySelectorAll('.group-product-checkbox:checked')).map(cb => cb.value)
                 const calcMethod = extractCalculationRule(`group_${safeSellerId}_${idx}`, groupDiv)
-                currentRule.groups.push({
+
+                const group = {
                     id: Date.now().toString() + Math.random().toString().slice(2,6),
-                    name, freeShipping, freeShippingThreshold: freeThreshold, productIds, calculationMethod: calcMethod
-                })
+                    name,
+                    productIds,
+                    calculationMethod: calcMethod
+                }
+
+                // Only save threshold if checkbox is checked (checkbox state deduced from threshold existence)
+                if (freeShippingCb && freeShippingCb.checked) {
+                    const freeThresholdInput = groupDiv.querySelector('.group-free-shipping-input')
+                    const threshold = parseFloat(freeThresholdInput.value)
+                    if (!isNaN(threshold) && threshold >= 0) {
+                        group.freeShippingThreshold = threshold
+                    }
+                }
+
+                currentRule.groups.push(group)
             })
         } else if (currentRule.billingMethod === 'free') {
             currentRule.calculationMethod = { type: 'free' }
