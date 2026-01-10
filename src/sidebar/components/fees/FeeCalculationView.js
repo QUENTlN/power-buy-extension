@@ -661,7 +661,7 @@ export function renderCalculationRules(prefix, ruleData, config = {}) {
 
     // Type definitions with labels and help text
     const typeDefinitions = {
-        item: { label: t('deliveryRules.typeItem'), help: t('deliveryRules.typeItemHelp') },
+        cumul: { label: t('deliveryRules.typeCumul'), help: t('deliveryRules.typeCumulHelp') },
         free: { label: t('deliveryRules.freeDelivery'), help: t('deliveryRules.freeDeliveryHelp') },
         fixed: { label: t('deliveryRules.typeFixed'), help: t('deliveryRules.typeFixedHelp') },
         percentage: { label: t('deliveryRules.typePercentage'), help: t('deliveryRules.typePercentageHelp') },
@@ -709,7 +709,7 @@ export function renderCalculationRules(prefix, ruleData, config = {}) {
     const hideAdvancedSettings = presetConfig.hideAdvancedSettings || false
 
     const TYPE_RENDERERS = {
-        item: () => `<p class="text-sm secondary-text italic">${t('deliveryRules.typeItem')}</p>`,
+        cumul: () => `<p class="text-sm secondary-text italic">${t('deliveryRules.typeCumul')}</p>`,
         free: () => `<p class="text-sm font-medium card-text italic">${t('deliveryRules.freeDelivery')}</p>`,
         fixed: (p, d) => renderFixedInputs(p, d, currencyCode),
         percentage: (p, d) => renderPercentageInputs(p, d),

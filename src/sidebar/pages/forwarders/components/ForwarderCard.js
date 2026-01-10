@@ -21,8 +21,8 @@ function renderFeeSummary(fees) {
       desc = `${calcMethod.amount || 0}`
     } else if (calcMethod.type === 'percentage') {
       desc = `${(calcMethod.rate * 100).toFixed(1)}%`
-    } else if (calcMethod.type === 'item') {
-      desc = t("deliveryRules.typeItem")
+    } else if (calcMethod.type === 'cumul') {
+      desc = t("deliveryRules.typeCumul")
     } else if (calcMethod.isTiered && calcMethod.ranges) {
       desc = `${t("deliveryRules.tieredPricing")} (${calcMethod.ranges.length} ${t("deliveryRules.ranges")})`
     } else {

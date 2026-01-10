@@ -12,8 +12,8 @@ export const FEE_CALCULATION_TYPES = {
     fixed: { category: 'simple', requiresTiers: false },
     percentage: { category: 'simple', requiresTiers: false },
 
-    // Item-based (seller only)
-    item: { category: 'item', requiresTiers: false, sellerOnly: true },
+    // Cumul-based (seller only)
+    cumul: { category: 'cumul', requiresTiers: false, sellerOnly: true },
 
     // Tierable types (may require session features)
     quantity: { category: 'tierable', requiresTiers: true },
@@ -36,13 +36,13 @@ export const FEE_CALCULATION_TYPES = {
  * Preset configurations for different contexts
  */
 export const FEE_CONFIG_PRESETS = {
-    // Full configuration for seller shipping fees (includes 'item')
+    // Full configuration for seller shipping fees (includes 'cumul')
     sellerShipping: {
-        availableTypes: ['item', 'free', 'fixed', 'percentage', 'quantity', 'distance', 'weight', 'volume', 'order_amount', 'dimension', 'weight_volume', 'weight_dimension'],
+        availableTypes: ['cumul', 'free', 'fixed', 'percentage', 'quantity', 'distance', 'weight', 'volume', 'order_amount', 'dimension', 'weight_volume', 'weight_dimension'],
         includeItem: true,
     },
 
-    // Full configuration for forwarder re-shipping fees (no 'item')
+    // Full configuration for forwarder re-shipping fees (no 'cumul')
     forwarderReShipping: {
         availableTypes: ['free', 'fixed', 'percentage', 'quantity', 'weight', 'volume', 'dimension', 'weight_volume', 'weight_dimension'],
         includeItem: false,
@@ -88,7 +88,7 @@ export function getTypeConfig(type) {
  * Filter available types based on configuration and session features
  * @param {string[]} availableTypes - List of type values to filter
  * @param {object|null} session - Session object with feature flags
- * @param {boolean} includeItem - Whether to include 'item' type
+ * @param {boolean} includeItem - Whether to include 'cumul' type
  * @returns {string[]} Filtered list of available type values
  */
 export function filterAvailableTypes(availableTypes, session, includeItem = true) {
@@ -96,8 +96,8 @@ export function filterAvailableTypes(availableTypes, session, includeItem = true
         const config = FEE_CALCULATION_TYPES[typeValue]
         if (!config) return false
 
-        // Filter out 'item' if not included
-        if (typeValue === 'item' && !includeItem) return false
+        // Filter out 'cumul' if not included
+        if (typeValue === 'cumul' && !includeItem) return false
 
         // Check session feature requirements
         if (config.requires && config.requires.length > 0) {

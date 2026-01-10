@@ -32,7 +32,7 @@ export function ensureDefaultRule(session, seller) {
       seller: seller,
       billingMethod: 'global',
       calculationMethod: {
-        type: 'item'
+        type: 'cumul'
       }
     }
     session.deliveryRules.push(defaultRule)

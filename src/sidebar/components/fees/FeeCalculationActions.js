@@ -734,8 +734,8 @@ export async function handleCalculationTypeChange(e) {
     } else if (['weight_volume', 'weight_dimension'].includes(newType)) {
         const data = { type: newType, weightUnit: getDefaultUnitForType('weight'), volUnit: getDefaultUnitForType('volume') }
         newHtml = renderCombinedInputs(prefix, data, newType, currency)
-    } else if (newType === 'item') {
-        newHtml = `<p class="text-sm secondary-text italic">${t('deliveryRules.typeItem')}</p>`
+    } else if (newType === 'cumul') {
+        newHtml = `<p class="text-sm secondary-text italic">${t('deliveryRules.typeCumul')}</p>`
     } else if (newType === 'free') {
         newHtml = `<p class="text-sm font-medium card-text italic">${t('deliveryRules.freeDelivery')}</p>`
     }

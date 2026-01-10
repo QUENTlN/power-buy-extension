@@ -11,8 +11,8 @@ function renderCalcMethodDetails(calcMethod, currency, indent = false) {
 
   if (type === 'free') {
     html = `<div class="${indentClass} text-sm card-text font-medium">${t("deliveryRules.freeDelivery")}</div>`
-  } else if (type === 'item') {
-    html = `<div class="${indentClass} text-sm secondary-text italic">${t("deliveryRules.typeItem")}</div>`
+  } else if (type === 'cumul') {
+    html = `<div class="${indentClass} text-sm secondary-text italic">${t("deliveryRules.typeCumul")}</div>`
   } else if (type === 'fixed') {
     const amount = calcMethod.amount || 0
     html = `
