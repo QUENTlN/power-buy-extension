@@ -246,7 +246,14 @@
         "removeFromChain": "Remove from chain",
         "moveUp": "Move up",
         "moveDown": "Move down",
-        "selectForwarder": "Select a forwarder"
+        "selectForwarder": "Select a forwarder",
+        "packingMode": "Packing Mode",
+        "packingModePerItem": "Per Item",
+        "packingModeGrouped": "Grouped (optimized)",
+        "packingModeSingle": "Single Parcel",
+        "packingModePerItemHelp": "Each offer/bundle is shipped in its own parcel",
+        "packingModeGroupedHelp": "Items can be grouped to optimize shipping costs (default)",
+        "packingModeSingleHelp": "All items must fit in a single parcel"
     },
     "importFees": {
         "subtitle": "Configure VAT and customs duty rates for imported products."

@@ -246,7 +246,14 @@
         "removeFromChain": "Quitar de la cadena",
         "moveUp": "Subir",
         "moveDown": "Bajar",
-        "selectForwarder": "Seleccionar un reenviador"
+        "selectForwarder": "Seleccionar un reenviador",
+        "packingMode": "Modo de embalaje",
+        "packingModePerItem": "Por artículo",
+        "packingModeGrouped": "Agrupado (optimizado)",
+        "packingModeSingle": "Paquete único",
+        "packingModePerItemHelp": "Cada oferta/lote se envía en su propio paquete",
+        "packingModeGroupedHelp": "Los artículos se pueden agrupar para optimizar los costos de envío (predeterminado)",
+        "packingModeSingleHelp": "Todos los artículos deben caber en un solo paquete"
     },
     "importFees": {
         "subtitle": "Gestione las tasas de importación para productos internacionales"

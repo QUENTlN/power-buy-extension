@@ -246,7 +246,14 @@
         "removeFromChain": "Retirer de la chaîne",
         "moveUp": "Monter",
         "moveDown": "Descendre",
-        "selectForwarder": "Sélectionner un transitaire"
+        "selectForwarder": "Sélectionner un transitaire",
+        "packingMode": "Mode de conditionnement",
+        "packingModePerItem": "Par article",
+        "packingModeGrouped": "Groupé (optimisé)",
+        "packingModeSingle": "Colis unique",
+        "packingModePerItemHelp": "Chaque offre/lot est expédié dans son propre colis",
+        "packingModeGroupedHelp": "Les articles peuvent être groupés pour optimiser les coûts de livraison (défaut)",
+        "packingModeSingleHelp": "Tous les articles doivent tenir dans un seul colis"
     },
     "importFees": {
         "subtitle": "Configurez les taux de TVA et de droits de douane pour les produits importés."

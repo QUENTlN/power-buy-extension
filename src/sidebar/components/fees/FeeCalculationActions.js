@@ -79,27 +79,11 @@ export function extractCalculationRule(prefix, container) {
         const unitSelect = container.querySelector(`select[name="${prefix}_unit"]`)
         if (unitSelect) rule.unit = unitSelect.value
 
-        const isTieredCb = container.querySelector(`input[name="${prefix}_isTiered"]`)
-        rule.isTiered = isTieredCb ? isTieredCb.checked : false
+        // Extract packing mode
+        const packingModeRadio = container.querySelector(`input[name="${prefix}_packingMode"]:checked`)
+        rule.packingMode = packingModeRadio ? packingModeRadio.value : 'grouped'
 
-        if (!rule.isTiered) {
-            const maxL = container.querySelector(`input[name="${prefix}_maxL"]`)
-            const maxW = container.querySelector(`input[name="${prefix}_maxW"]`)
-            const maxH = container.querySelector(`input[name="${prefix}_maxH"]`)
-            const amount = container.querySelector(`input[name="${prefix}_amount"]`)
-            rule.maxL = maxL ? parseFloat(maxL.value) || 0 : 0
-            rule.maxW = maxW ? parseFloat(maxW.value) || 0 : 0
-            rule.maxH = maxH ? parseFloat(maxH.value) || 0 : 0
-            rule.amount = amount ? parseFloat(amount.value) || 0 : 0
-        } else {
-            const valTypeRadio = container.querySelector(`input[name="${prefix}_tierValueType"]:checked`)
-            rule.tierValueType = valTypeRadio ? valTypeRadio.value : 'fixed'
-
-            const valModeRadio = container.querySelector(`input[name="${prefix}_tierValueMode"]:checked`)
-            rule.tierValueMode = valModeRadio ? valModeRadio.value : 'perUnit'
-
-            rule.ranges = extractRangesFromInputs(prefix, container, ['maxL', 'maxW', 'maxH'])
-        }
+        rule.ranges = extractRangesFromInputs(prefix, container, ['maxL', 'maxW', 'maxH'])
 
     } else if (['weight_volume', 'weight_dimension'].includes(type)) {
         const wUnit = container.querySelector(`select[name="${prefix}_weightUnit"]`)
@@ -107,11 +91,9 @@ export function extractCalculationRule(prefix, container) {
         const vUnit = container.querySelector(`select[name="${prefix}_volUnit"]`)
         if (vUnit) rule.volUnit = vUnit.value
 
-        const valTypeRadio = container.querySelector(`input[name="${prefix}_tierValueType"]:checked`)
-        if (valTypeRadio) rule.tierValueType = valTypeRadio.value
-
-        const valModeRadio = container.querySelector(`input[name="${prefix}_tierValueMode"]:checked`)
-        if (valModeRadio) rule.tierValueMode = valModeRadio.value
+        // Extract packing mode
+        const packingModeRadio = container.querySelector(`input[name="${prefix}_packingMode"]:checked`)
+        rule.packingMode = packingModeRadio ? packingModeRadio.value : 'grouped'
 
         rule.ranges = extractRangesFromInputs(prefix, container, ['maxWeight', 'maxVol'])
     } else if (type === 'order_amount') {
@@ -167,10 +149,12 @@ export function updateValueLabels(container, prefix, type, data, currency = null
     const volUnit = data.volUnit || ''
 
     let valueLabel = ''
-    if (['quantity', 'distance', 'weight', 'volume', 'dimension'].includes(type)) {
+    if (type === 'weight_volume' || type === 'weight_dimension') {
+        valueLabel = getValueLabel(type, 'fixed', 'total', weightUnit, volUnit, currency)
+    } else if (type === 'dimension') {
+        valueLabel = getValueLabel(type, 'fixed', 'total', unit, '', currency)
+    } else {
         valueLabel = getValueLabel(type, tierValueType, tierValueMode, unit, '', currency)
-    } else if (['weight_volume', 'weight_dimension'].includes(type)) {
-        valueLabel = getValueLabel(type, tierValueType, tierValueMode, weightUnit, volUnit, currency)
     }
 
     if (['dimension', 'weight_volume', 'weight_dimension'].includes(type)) {
@@ -752,14 +736,18 @@ export function handleTieredToggle(e) {
     clearAllTierErrors(container)
 
     const data = extractCalculationRule(prefix, container)
+    const type = data.type
+    
+    // Dimension type doesn't support toggle anymore - always uses ranges
+    if (type === 'dimension') {
+        return
+    }
+    
     data.isTiered = element.classList.contains('is-tiered-toggle') ? (element.value === 'tiered') : element.checked
 
-    const type = data.type
     const inputsContainer = container.querySelector('.calculation-inputs')
 
-    if (type === 'dimension') {
-        inputsContainer.innerHTML = renderDimensionInputs(prefix, data, currency)
-    } else if (['weight_volume', 'weight_dimension'].includes(type)) {
+    if (['weight_volume', 'weight_dimension'].includes(type)) {
         inputsContainer.innerHTML = renderCombinedInputs(prefix, data, type, currency)
     } else {
         inputsContainer.innerHTML = renderTieredInputs(prefix, data, type, false, currency)
@@ -833,6 +821,38 @@ export function handleMaxChange(e, container) {
     }
 }
 
+export function handlePackingModeChange(e) {
+    const radio = e.target
+    const container = radio.closest('[data-prefix]')
+    if (!container) return
+
+    const value = radio.value
+    const helpText = container.querySelector('p.text-\\[10px\\]')
+    
+    if (helpText) {
+        if (value === 'perItem') {
+            helpText.textContent = t('deliveryRules.packingModePerItemHelp')
+        } else if (value === 'single') {
+            helpText.textContent = t('deliveryRules.packingModeSingleHelp')
+        } else {
+            helpText.textContent = t('deliveryRules.packingModeGroupedHelp')
+        }
+    }
+
+    // Update button styles
+    const labels = container.querySelectorAll(`label:has(input[name="${radio.name}"])`)
+    labels.forEach(label => {
+        const input = label.querySelector('input')
+        if (input.value === value) {
+            label.classList.add('bg-[hsl(var(--card))]', 'shadow-sm', 'font-medium', 'card-text')
+            label.classList.remove('secondary-text')
+        } else {
+            label.classList.remove('bg-[hsl(var(--card))]', 'shadow-sm', 'font-medium', 'card-text')
+            label.classList.add('secondary-text')
+        }
+    })
+}
+
 export function handleAddRange(e, container) {
     const btn = e.target.closest('.add-range-btn')
     const prefix = btn.dataset.prefix
@@ -892,6 +912,7 @@ export function handleAddRange(e, container) {
 
     const currency = getCurrentCurrency()
     const rowHtml = renderRangeRow(type, prefix, newIndex, { min: newMin }, tierValueType, tierValueMode, unitParam, unit2Param, currency)
+
     const temp = document.createElement('div')
     temp.innerHTML = rowHtml
     const placeholder = rangesContainer.querySelector('.empty-placeholder')

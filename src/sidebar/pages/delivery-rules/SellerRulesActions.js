@@ -18,6 +18,7 @@ import {
     handleMaxChange,
     handleAddRange,
     handleRemoveRange,
+    handlePackingModeChange,
 } from '../../components/fees/index.js'
 import { CURRENCIES } from '../../../shared/config/currencies.js'
 
@@ -31,6 +32,7 @@ export {
     handleMaxChange,
     handleAddRange,
     handleRemoveRange,
+    handlePackingModeChange,
 }
 
 // ============================================================================

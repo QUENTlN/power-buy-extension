@@ -95,6 +95,11 @@ function attachEventListeners(sellerCard, session, seller, safeSellerId) {
             const container = e.target.closest('.calculation-rules-container')
             actions.handleMaxChange(e, container)
         }
+
+        // Packing mode change
+        if (e.target.name && e.target.name.endsWith('_packingMode')) {
+            actions.handlePackingModeChange(e)
+        }
     })
 
     // Blur events for live validation (delegation)

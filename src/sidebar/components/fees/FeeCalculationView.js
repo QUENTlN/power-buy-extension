@@ -355,101 +355,80 @@ export function renderTieredInputs(prefix, data, type, hideAdvancedSettings = fa
 
 export function renderDimensionInputs(prefix, data, currency = null) {
     const currencyCode = currency || DEFAULT_CURRENCY
-    const isTiered = data.isTiered || false
     const units = DIMENSION_UNITS
+    const unit = data.unit || DEFAULT_DIMENSION_UNIT
+
+    const valueLabel = getCurrencySymbol(currencyCode)
+
     let html = ''
 
     html += `
         <div class="mb-4">
             <label class="block text-xs font-semibold secondary-text mb-1 tracking-wide">${t('deliveryRules.unit')}</label>
             <select name="${prefix}_unit" class="w-full bg-[hsl(var(--card))] border border-default rounded-md px-3 py-2 text-sm focus:border-primary focus:outline-none transition-colors">
-                ${units.map(u => `<option value="${u.value}" ${(data.unit || DEFAULT_DIMENSION_UNIT) === u.value ? 'selected' : ''}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+                ${units.map(u => `<option value="${u.value}" ${unit === u.value ? 'selected' : ''}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
             </select>
         </div>
     `
 
+    // Packing mode selector
+    const packingMode = data.packingMode || 'grouped'
     html += `
-        <div class="mb-6 bg-[hsl(var(--muted))] p-1 rounded-lg inline-flex">
-             <label class="px-3 py-1 rounded-md text-sm cursor-pointer transition-all ${!isTiered ? 'bg-[hsl(var(--card))] shadow-sm font-medium' : 'secondary-text'}">
-                <input type="radio" name="${prefix}_mode_toggle" class="hidden is-tiered-toggle" value="single" ${!isTiered ? 'checked' : ''}>
-                ${t('deliveryRules.singleRate')}
-            </label>
-            <label class="px-3 py-1 rounded-md text-sm cursor-pointer transition-all ${isTiered ? 'bg-[hsl(var(--card))] shadow-sm font-medium' : 'secondary-text'}">
-                <input type="radio" name="${prefix}_mode_toggle" class="hidden is-tiered-toggle" value="tiered" ${isTiered ? 'checked' : ''}>
-                ${t('deliveryRules.tieredPricing')}
-            </label>
-            <input type="checkbox" name="${prefix}_isTiered" class="is-tiered-checkbox hidden" ${isTiered ? 'checked' : ''}>
+        <div class="mb-4">
+            <label class="block text-xs font-semibold secondary-text mb-2 tracking-wide">${t('deliveryRules.packingMode')}</label>
+            <div class="bg-[hsl(var(--muted))] p-1 rounded-lg inline-flex w-full">
+                <label class="flex-1 px-3 py-2 rounded-md text-xs cursor-pointer transition-all text-center ${packingMode === 'perItem' ? 'bg-[hsl(var(--card))] shadow-sm font-medium card-text' : 'secondary-text'}">
+                    <input type="radio" name="${prefix}_packingMode" value="perItem" class="hidden" ${packingMode === 'perItem' ? 'checked' : ''}>
+                    ${t('deliveryRules.packingModePerItem')}
+                </label>
+                <label class="flex-1 px-3 py-2 rounded-md text-xs cursor-pointer transition-all text-center ${packingMode === 'grouped' ? 'bg-[hsl(var(--card))] shadow-sm font-medium card-text' : 'secondary-text'}">
+                    <input type="radio" name="${prefix}_packingMode" value="grouped" class="hidden" ${packingMode === 'grouped' ? 'checked' : ''}>
+                    ${t('deliveryRules.packingModeGrouped')}
+                </label>
+                <label class="flex-1 px-3 py-2 rounded-md text-xs cursor-pointer transition-all text-center ${packingMode === 'single' ? 'bg-[hsl(var(--card))] shadow-sm font-medium card-text' : 'secondary-text'}">
+                    <input type="radio" name="${prefix}_packingMode" value="single" class="hidden" ${packingMode === 'single' ? 'checked' : ''}>
+                    ${t('deliveryRules.packingModeSingle')}
+                </label>
+            </div>
+            <p class="text-[10px] secondary-text italic mt-2 px-1">
+                ${packingMode === 'perItem' ? t('deliveryRules.packingModePerItemHelp') : 
+                  packingMode === 'single' ? t('deliveryRules.packingModeSingleHelp') : 
+                  t('deliveryRules.packingModeGroupedHelp')}
+            </p>
         </div>
     `
 
-    if (!isTiered) {
-        html += `
-             <div class="mb-4 p-4 bg-[hsl(var(--muted))] rounded-lg border border-default/50">
-                 <div class="grid grid-cols-3 gap-4 mb-4">
-                    <div>
-                        <label class="block text-xs font-semibold secondary-text mb-1">${t('deliveryRules.length')} (Max)</label>
-                        <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none" name="${prefix}_maxL" value="${data.maxL || ''}" placeholder="∞">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold secondary-text mb-1">${t('deliveryRules.width')} (Max)</label>
-                        <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none" name="${prefix}_maxW" value="${data.maxW || ''}" placeholder="∞">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold secondary-text mb-1">${t('deliveryRules.height')} (Max)</label>
-                        <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none" name="${prefix}_maxH" value="${data.maxH || ''}" placeholder="∞">
-                    </div>
-                 </div>
+    html += `
+         <div class="mb-4">
+            <p class="text-[10px] secondary-text italic mb-3 px-1 flex items-center gap-1.5">
+                <span class="icon icon-info w-3.5 h-3.5 flex-shrink-0 opacity-70"></span>
+                <span>${t('deliveryRules.tieredMaxLimitHelp')}</span>
+            </p>
 
-                <div>
-                    <label class="block text-xs font-semibold secondary-text mb-1">${t('deliveryRules.amount')} (${getCurrencySymbol(currencyCode)})</label>
-                    <div class="relative">
-                        <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none pl-3 font-medium"
-                        name="${prefix}_amount" value="${data.amount || 0}">
-                    </div>
-                </div>
-            </div>
-        `
-    } else {
-        // Tiered mode - always force tierType='global' and tierValueType='fixed' (no advanced settings)
-        const tierValueType = 'fixed'
-        const tierValueMode = data.tierValueMode || 'perUnit'
-        const unit = data.unit || DEFAULT_DIMENSION_UNIT
-
-        const valueLabel = getValueLabel('dimension', tierValueType, tierValueMode, unit, '', currencyCode)
-
-        html += `
-             <div class="mb-4">
-                <p class="text-[10px] secondary-text italic mb-3 px-1 flex items-center gap-1.5">
-                    <span class="icon icon-info w-3.5 h-3.5 flex-shrink-0 opacity-70"></span>
-                    <span>${t('deliveryRules.tieredMaxLimitHelp')}</span>
-                </p>
-
-                <div class="flex gap-2 mb-2 text-xs font-semibold secondary-text uppercase tracking-wider pl-2 pr-2">
-                    <div class="flex-1">Max ${t('deliveryRules.length')}</div>
-                    <div class="flex-1">Max ${t('deliveryRules.width')}</div>
-                    <div class="flex-1">Max ${t('deliveryRules.height')}</div>
-                    <div class="flex-[1.5]">${t('deliveryRules.value')} (${valueLabel})</div>
-                    <div class="w-8"></div>
-                </div>
-
-                <div class="ranges-container space-y-2 mb-4" data-prefix="${prefix}" data-type="dimension" data-tier-value-type="${tierValueType}" data-tier-value-mode="${tierValueMode}" data-unit="${unit}">
-                     ${(data.ranges || []).map((range, idx) => renderRangeRow('dimension', prefix, idx, range, tierValueType, tierValueMode, unit, '', currencyCode)).join('')}
-                    ${(!data.ranges || data.ranges.length === 0) ? `<div class="empty-placeholder text-xs secondary-text italic text-center p-4 bg-[hsl(var(--muted))] rounded-lg border border-dashed border-default">${t('deliveryRules.noRange')}</div>` : ''}
-                </div>
-
-                <button class="add-range-btn w-full py-2 flex items-center justify-center space-x-2 text-sm font-medium text-primary hover:bg-[hsl(var(--primary))]/10 rounded-md border border-dashed border-[hsl(var(--primary))]/30 transition-all" data-prefix="${prefix}">
-                    <span class="text-lg leading-none">+</span>
-                    <span>${t('deliveryRules.addRange')}</span>
-                </button>
+            <div class="flex gap-2 mb-2 text-xs font-semibold secondary-text uppercase tracking-wider pl-2 pr-2">
+                <div class="flex-1">Max ${t('deliveryRules.length')}</div>
+                <div class="flex-1">Max ${t('deliveryRules.width')}</div>
+                <div class="flex-1">Max ${t('deliveryRules.height')}</div>
+                <div class="flex-[1.5]">${t('deliveryRules.value')} (${valueLabel})</div>
+                <div class="w-8"></div>
             </div>
 
-            <!-- Hidden inputs to force tierType and tierValueType -->
-            <input type="hidden" name="${prefix}_tierType" value="global">
-            <input type="hidden" name="${prefix}_tierValueType" value="fixed">
+            <div class="ranges-container space-y-2 mb-4" data-prefix="${prefix}" data-type="dimension" data-unit="${unit}">
+                 ${(data.ranges || []).map((range, idx) => renderRangeRow('dimension', prefix, idx, range, 'fixed', 'total', unit, '', currencyCode)).join('')}
 
-            <!-- NO Advanced Settings for dimension mode -->
-        `
-    }
+                ${(!data.ranges || data.ranges.length === 0) ? `<div class="empty-placeholder text-xs secondary-text italic text-center p-4 bg-[hsl(var(--muted))] rounded-lg border border-dashed border-default">${t('deliveryRules.noRange')}</div>` : ''}
+            </div>
+
+            <button class="add-range-btn w-full py-2 flex items-center justify-center space-x-2 text-sm font-medium text-primary hover:bg-[hsl(var(--primary))]/10 rounded-md border border-dashed border-[hsl(var(--primary))]/30 transition-all" data-prefix="${prefix}">
+                <span class="text-lg leading-none">+</span>
+                <span>${t('deliveryRules.addRange')}</span>
+            </button>
+        </div>
+
+        <!-- Hidden inputs to ensure correct data structure -->
+        <input type="hidden" name="${prefix}_tierType" value="global">
+    `
+
     return html
 }
 
@@ -565,9 +544,8 @@ export function renderCombinedInputs(prefix, data, type, currency = null) {
     const currencyCode = currency || DEFAULT_CURRENCY
     const weightUnits = WEIGHT_UNITS
     const volUnits = type === 'weight_dimension' ? DIMENSION_UNITS : VOLUME_UNITS
-    const tierValueType = data.tierValueType || 'fixed'
-    const tierValueMode = data.tierValueMode || 'perUnit'
     const weightUnit = data.weightUnit || (weightUnits[0] ? weightUnits[0].value : '')
+
     const volUnit = data.volUnit || (volUnits[0] ? volUnits[0].value : '')
 
     let html = ''
@@ -588,7 +566,35 @@ export function renderCombinedInputs(prefix, data, type, currency = null) {
         </div>
     </div>`
 
-    const valueLabel = getValueLabel(type, tierValueType, tierValueMode, weightUnit, volUnit, currencyCode)
+    // Packing mode selector
+    const packingMode = data.packingMode || 'grouped'
+    html += `
+        <div class="mb-4">
+            <label class="block text-xs font-semibold secondary-text mb-2 tracking-wide">${t('deliveryRules.packingMode')}</label>
+            <div class="bg-[hsl(var(--muted))] p-1 rounded-lg inline-flex w-full">
+                <label class="flex-1 px-3 py-2 rounded-md text-xs cursor-pointer transition-all text-center ${packingMode === 'perItem' ? 'bg-[hsl(var(--card))] shadow-sm font-medium card-text' : 'secondary-text'}">
+                    <input type="radio" name="${prefix}_packingMode" value="perItem" class="hidden" ${packingMode === 'perItem' ? 'checked' : ''}>
+                    ${t('deliveryRules.packingModePerItem')}
+                </label>
+                <label class="flex-1 px-3 py-2 rounded-md text-xs cursor-pointer transition-all text-center ${packingMode === 'grouped' ? 'bg-[hsl(var(--card))] shadow-sm font-medium card-text' : 'secondary-text'}">
+                    <input type="radio" name="${prefix}_packingMode" value="grouped" class="hidden" ${packingMode === 'grouped' ? 'checked' : ''}>
+                    ${t('deliveryRules.packingModeGrouped')}
+                </label>
+                <label class="flex-1 px-3 py-2 rounded-md text-xs cursor-pointer transition-all text-center ${packingMode === 'single' ? 'bg-[hsl(var(--card))] shadow-sm font-medium card-text' : 'secondary-text'}">
+                    <input type="radio" name="${prefix}_packingMode" value="single" class="hidden" ${packingMode === 'single' ? 'checked' : ''}>
+                    ${t('deliveryRules.packingModeSingle')}
+                </label>
+            </div>
+            <p class="text-[10px] secondary-text italic mt-2 px-1">
+                ${packingMode === 'perItem' ? t('deliveryRules.packingModePerItemHelp') : 
+                  packingMode === 'single' ? t('deliveryRules.packingModeSingleHelp') : 
+                  t('deliveryRules.packingModeGroupedHelp')}
+            </p>
+        </div>
+    `
+
+    const valueLabel = getValueLabel(type, 'fixed', 'total', weightUnit, volUnit, currencyCode)
+
 
     html += `
             <div class="mb-4">
@@ -610,8 +616,9 @@ export function renderCombinedInputs(prefix, data, type, currency = null) {
                     <div class="w-8"></div>
                 </div>
 
-                <div class="ranges-container space-y-2 mb-4" data-prefix="${prefix}" data-type="${type}" data-tier-value-type="${tierValueType}" data-tier-value-mode="${tierValueMode}" data-unit="${weightUnit}" data-unit2="${volUnit}">
-                    ${(data.ranges || []).map((range, idx) => renderRangeRow(type, prefix, idx, range, tierValueType, tierValueMode, weightUnit, volUnit, currencyCode)).join('')}
+                <div class="ranges-container space-y-2 mb-4" data-prefix="${prefix}" data-type="${type}" data-unit="${weightUnit}" data-unit2="${volUnit}">
+                    ${(data.ranges || []).map((range, idx) => renderRangeRow(type, prefix, idx, range, 'fixed', 'total', weightUnit, volUnit, currencyCode)).join('')}
+
                     ${(!data.ranges || data.ranges.length === 0) ? `<div class="empty-placeholder text-xs secondary-text italic text-center p-4 bg-[hsl(var(--muted))] rounded-lg border border-dashed border-default">${t('deliveryRules.noRange')}</div>` : ''}
                 </div>
 

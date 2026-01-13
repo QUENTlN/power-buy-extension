@@ -44,82 +44,221 @@ function renderCalcMethodDetails(calcMethod, currency, indent = false) {
     }
 
     const ranges = calcMethod.ranges || []
-    const isTiered = calcMethod.isTiered !== false && ranges.length > 0
 
-    if (isTiered) {
-      const tierValueType = calcMethod.tierValueType || 'fixed'
-      const tierValueMode = calcMethod.tierValueMode || 'total'
+    // For dimension type, always render ranges (no isTiered check)
+    if (type === 'dimension' && ranges.length > 0) {
+      const normalizedType = String(type).trim()
+
+      let tableHeader = ''
+      let tableRows = ''
+
+      // Helper to format values
+      const fmtVal = (v) => (v !== undefined && v !== null && v !== '') ? formatNumber(v) : '∞'
+
+      // Helper to format value display
+      const getValueDisplay = (val) => {
+        let value = val || 0
+        return `${formatNumber(value)} ${getCurrencySymbol(currency)}`
+      }
+
+      tableHeader = `
+          <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.length")}</th>
+          <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.width")}</th>
+          <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.height")}</th>
+          <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.value")}</th>
+      `
+      tableRows = ranges.map(range => `
+          <tr class="border-b border-default/50">
+              <td class="py-1 px-2 card-text">${fmtVal(range.maxL)}</td>
+              <td class="py-1 px-2 card-text">${fmtVal(range.maxW)}</td>
+              <td class="py-1 px-2 card-text">${fmtVal(range.maxH)}</td>
+              <td class="py-1 px-2 card-text font-medium">${getValueDisplay(range.value)}</td>
+          </tr>
+      `).join('')
+
+      const packingMode = calcMethod.packingMode || 'grouped'
+      const packingModeLabels = {
+        'perItem': t("deliveryRules.packingModePerItem"),
+        'grouped': t("deliveryRules.packingModeGrouped"),
+        'single': t("deliveryRules.packingModeSingle")
+      }
 
       html = `
-        <div class="${indentClass} text-sm">
+        <div class="${indentClass} text-sm" data-rule-type="${normalizedType}">
           <div class="font-medium secondary-text mb-1">
             ${typeLabels[type] || type}
             <span class="text-xs muted-text font-normal ml-1">
               (${ranges.length} ${ranges.length === 1 ? t("deliveryRules.addRange").toLowerCase() : t("deliveryRules.ranges").toLowerCase()})
             </span>
           </div>
+          <div class="text-xs secondary-text mb-2 flex items-center gap-1">
+            <span class="font-medium">${t("deliveryRules.packingMode")}:</span>
+            <span class="card-text">${packingModeLabels[packingMode]}</span>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full text-xs border-collapse">
               <thead>
                 <tr class="border-b border-default">
-                  <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.min")}</th>
-                  <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.max")}</th>
-                  <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.value")}</th>
+                  ${tableHeader}
                 </tr>
               </thead>
               <tbody>
-                ${ranges.map((range) => {
-                  const min = range.min !== undefined && range.min !== null ? formatNumber(range.min) : ''
-                  const max = range.max !== undefined && range.max !== null ? formatNumber(range.max) : '∞'
-                  let value = range.value || 0
-
-                  let valueDisplay = ''
-                  if (tierValueType === 'fixed') {
-                    valueDisplay = `${formatNumber(value)} ${getCurrencySymbol(currency)}`
-                  } else if (tierValueType === 'pctOrder' || tierValueType === 'pctDelivery') {
-                    valueDisplay = `${formatPercent(value)}%`
-                  }
-
-                  if (tierValueMode === 'perUnit') {
-                    valueDisplay += ` / ${t("deliveryRules.unit").toLowerCase()}`
-                  }
-
-                  return `
-                    <tr class="border-b border-default/50">
-                      <td class="py-1 px-2 card-text">${min}</td>
-                      <td class="py-1 px-2 card-text">${max}</td>
-                      <td class="py-1 px-2 card-text font-medium">${valueDisplay}</td>
-                    </tr>
-                  `
-                }).join('')}
+                ${tableRows}
               </tbody>
             </table>
           </div>
         </div>
       `
-    } else if (calcMethod.amount !== undefined) {
-      const amount = calcMethod.amount || 0
-      const unit = calcMethod.unit || ''
-      let unitLabel = unit
+    } else {
+      // For other types, check if tiered
+      const isTiered = calcMethod.isTiered !== false && ranges.length > 0
 
-      if (unit && t(`attributes.units.${unit}`)) {
-        unitLabel = t(`attributes.units.${unit}`)
-      }
+      if (isTiered) {
+        const tierValueType = calcMethod.tierValueType || 'fixed'
+        const tierValueMode = (['dimension', 'weight_volume', 'weight_dimension'].includes(type)) ? 'total' : (calcMethod.tierValueMode || 'total')
 
-      html = `
+        const normalizedType = String(type).trim()
+
+        let tableHeader = ''
+        let tableRows = ''
+
+        // Helper to format values
+        const fmtVal = (v) => (v !== undefined && v !== null && v !== '') ? formatNumber(v) : '∞'
+
+        // Helper to format value display
+        const getValueDisplay = (val) => {
+          let value = val || 0
+          let valueDisplay = ''
+          if (tierValueType === 'fixed') {
+            valueDisplay = `${formatNumber(value)} ${getCurrencySymbol(currency)}`
+          } else if (tierValueType === 'pctOrder' || tierValueType === 'pctDelivery') {
+            valueDisplay = `${formatPercent(value)}%`
+          }
+
+          if (tierValueMode === 'perUnit') {
+            valueDisplay += ` / ${t("deliveryRules.unit").toLowerCase()}`
+          }
+          return valueDisplay
+        }
+
+        switch (normalizedType) {
+          case 'weight_volume':
+            tableHeader = `
+              <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.weight")}</th>
+              <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.volume")}</th>
+              <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.value")}</th>
+            `
+            tableRows = ranges.map(range => `
+              <tr class="border-b border-default/50">
+                <td class="py-1 px-2 card-text">${fmtVal(range.maxWeight)}</td>
+                <td class="py-1 px-2 card-text">${fmtVal(range.maxVol)}</td>
+                <td class="py-1 px-2 card-text font-medium">${getValueDisplay(range.value)}</td>
+              </tr>
+            `).join('')
+            break
+
+          case 'weight_dimension':
+            tableHeader = `
+              <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.weight")}</th>
+              <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.length")}</th>
+              <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.width")}</th>
+              <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.height")}</th>
+              <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.value")}</th>
+            `
+            tableRows = ranges.map(range => `
+                <tr class="border-b border-default/50">
+                  <td class="py-1 px-2 card-text">${fmtVal(range.maxWeight)}</td>
+                  <td class="py-1 px-2 card-text">${fmtVal(range.maxL)}</td>
+                  <td class="py-1 px-2 card-text">${fmtVal(range.maxW)}</td>
+                  <td class="py-1 px-2 card-text">${fmtVal(range.maxH)}</td>
+                  <td class="py-1 px-2 card-text font-medium">${getValueDisplay(range.value)}</td>
+                </tr>
+          `).join('')
+            break
+
+          default:
+            // Standard types (quantity, distance, weight, volume, order_amount)
+            tableHeader = `
+              <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.min")}</th>
+              <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.max")}</th>
+              <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.value")}</th>
+          `
+            tableRows = ranges.map((range) => {
+              const min = range.min !== undefined && range.min !== null ? formatNumber(range.min) : ''
+              const max = range.max !== undefined && range.max !== null ? formatNumber(range.max) : '∞'
+              return `
+                <tr class="border-b border-default/50">
+                  <td class="py-1 px-2 card-text">${min}</td>
+                  <td class="py-1 px-2 card-text">${max}</td>
+                  <td class="py-1 px-2 card-text font-medium">${getValueDisplay(range.value)}</td>
+                </tr>
+              `
+            }).join('')
+            break
+        }
+
+        // Display packing mode for weight_volume and weight_dimension types
+        const packingMode = calcMethod.packingMode || 'grouped'
+        const packingModeLabels = {
+          'perItem': t("deliveryRules.packingModePerItem"),
+          'grouped': t("deliveryRules.packingModeGrouped"),
+          'single': t("deliveryRules.packingModeSingle")
+        }
+        const showPackingMode = ['weight_volume', 'weight_dimension'].includes(normalizedType)
+
+        html = `
+        <div class="${indentClass} text-sm" data-rule-type="${normalizedType}">
+          <div class="font-medium secondary-text mb-1">
+            ${typeLabels[type] || type}
+            <span class="text-xs muted-text font-normal ml-1">
+              (${ranges.length} ${ranges.length === 1 ? t("deliveryRules.addRange").toLowerCase() : t("deliveryRules.ranges").toLowerCase()})
+            </span>
+          </div>
+          ${showPackingMode ? `
+          <div class="text-xs secondary-text mb-2 flex items-center gap-1">
+            <span class="font-medium">${t("deliveryRules.packingMode")}:</span>
+            <span class="card-text">${packingModeLabels[packingMode]}</span>
+          </div>
+          ` : ''}
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-default">
+                  ${tableHeader}
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRows}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+      } else if (calcMethod.amount !== undefined) {
+        const amount = calcMethod.amount || 0
+        const unit = calcMethod.unit || ''
+        let unitLabel = unit
+
+        if (unit && t(`attributes.units.${unit}`)) {
+          unitLabel = t(`attributes.units.${unit}`)
+        }
+
+        html = `
         <div class="${indentClass} text-sm secondary-text">
           <span class="font-medium">${typeLabels[type] || type}:</span>
           <span class="card-text font-semibold">${formatNumber(amount)} ${getCurrencySymbol(currency)}</span>
           ${unit ? `<span class="text-xs muted-text"> / ${unitLabel}</span>` : ''}
         </div>
       `
-    } else {
-      html = `<div class="${indentClass} text-sm muted-text italic">${typeLabels[type] || type}</div>`
+      } else {
+        html = `<div class="${indentClass} text-sm muted-text italic">${typeLabels[type] || type}</div>`
+      }
     }
   }
 
   return html
 }
+
 
 export function renderSellerRecapCard(session, seller, rule) {
   const currency = rule.currency || session.currency || DEFAULT_CURRENCY
@@ -169,9 +308,9 @@ export function renderSellerRecapCard(session, seller, rule) {
           ${groupCount} ${groupCount === 1 ? t("deliveryRules.addGroup") : t("deliveryRules.addGroup") + 's'}
         </p>
     `
-    ;(rule.groups || []).forEach((group) => {
-      const productCount = (group.productIds || []).length
-      detailsHtml += `
+      ; (rule.groups || []).forEach((group) => {
+        const productCount = (group.productIds || []).length
+        detailsHtml += `
         <div class="p-2 bg-[hsl(var(--card))] rounded border border-default/50 space-y-1">
           <div class="flex justify-between items-start">
             <p class="text-sm font-medium card-text">${group.name || t("deliveryRules.newGroupPlaceholder")}</p>
@@ -181,9 +320,9 @@ export function renderSellerRecapCard(session, seller, rule) {
           </div>
           ${renderCalcMethodDetails(group.calculationMethod, currency, false)}
       `
-      // Display free shipping threshold if it exists
-      if (group.freeShippingThreshold !== null && group.freeShippingThreshold !== undefined && group.freeShippingThreshold !== '') {
-        detailsHtml += `
+        // Display free shipping threshold if it exists
+        if (group.freeShippingThreshold !== null && group.freeShippingThreshold !== undefined && group.freeShippingThreshold !== '') {
+          detailsHtml += `
           <div class="pt-1 mt-1 border-t border-default/50">
             <p class="text-xs secondary-text">
               <span class="font-medium">${t("deliveryRules.freeShippingThreshold")}</span>
@@ -191,9 +330,9 @@ export function renderSellerRecapCard(session, seller, rule) {
             </p>
           </div>
         `
-      }
-      detailsHtml += `</div>`
-    })
+        }
+        detailsHtml += `</div>`
+      })
     detailsHtml += `</div>`
   }
 
