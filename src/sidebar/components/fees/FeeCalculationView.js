@@ -58,6 +58,8 @@ export function getValueLabel(type, tierValueType, tierValueMode, unit = '', uni
         unitLabel = ''
     } else if (type === 'weight_volume') {
         unitLabel = ''
+    } else if (type === 'volume_packages') {
+        unitLabel = ''
     }
 
     return prefix + unitLabel
@@ -159,6 +161,15 @@ export function renderRangeRow(type, prefix, idx, range = {}, tierValueType = 'f
                <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" name="${prefix}_range_${idx}_maxH" value="${range.maxH || ''}">
             </div>
             <div class="flex-1">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-primary focus:outline-none font-medium" placeholder="0.00" name="${prefix}_range_${idx}_value" value="${displayValue}">
+            </div>
+        `
+    } else if (type === 'volume_packages') {
+        inputs = `
+            <div class="flex-1">
+               <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary focus:outline-none" placeholder="∞" name="${prefix}_range_${idx}_maxVol" value="${range.maxVol || ''}">
+            </div>
+            <div class="flex-[1.5]">
                <input type="number" step="0.01" class="w-full bg-[hsl(var(--card))] border border-default rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-primary focus:outline-none font-medium" placeholder="0.00" name="${prefix}_range_${idx}_value" value="${displayValue}">
             </div>
         `
@@ -632,6 +643,79 @@ export function renderCombinedInputs(prefix, data, type, currency = null) {
     return html
 }
 
+export function renderVolumePackagesInputs(prefix, data, currency = null) {
+    const currencyCode = currency || DEFAULT_CURRENCY
+    const volUnits = VOLUME_UNITS
+    const volUnit = data.unit || DEFAULT_VOLUME_UNIT
+
+    let html = ''
+
+    // Volume unit selector
+    html += `<div class="mb-4">
+        <label class="block text-xs font-semibold secondary-text mb-1 tracking-wide">${t('deliveryRules.volume')} ${t('deliveryRules.unit')}</label>
+        <select name="${prefix}_unit" class="w-full bg-[hsl(var(--card))] border border-default rounded-md px-3 py-2 text-sm focus:border-primary focus:outline-none">
+            ${volUnits.map(u => `<option value="${u.value}" ${volUnit === u.value ? 'selected' : ''}>${t("attributes.units." + u.value)} (${u.label})</option>`).join('')}
+        </select>
+    </div>`
+
+    // Packing mode selector
+    const packingMode = data.packingMode || 'grouped'
+    html += `
+        <div class="mb-4">
+            <label class="block text-xs font-semibold secondary-text mb-2 tracking-wide">${t('deliveryRules.packingMode')}</label>
+            <div class="bg-[hsl(var(--muted))] p-1 rounded-lg inline-flex w-full">
+                <label class="flex-1 px-3 py-2 rounded-md text-xs cursor-pointer transition-all text-center ${packingMode === 'perItem' ? 'bg-[hsl(var(--card))] shadow-sm font-medium card-text' : 'secondary-text'}">
+                    <input type="radio" name="${prefix}_packingMode" value="perItem" class="hidden" ${packingMode === 'perItem' ? 'checked' : ''}>
+                    ${t('deliveryRules.packingModePerItem')}
+                </label>
+                <label class="flex-1 px-3 py-2 rounded-md text-xs cursor-pointer transition-all text-center ${packingMode === 'grouped' ? 'bg-[hsl(var(--card))] shadow-sm font-medium card-text' : 'secondary-text'}">
+                    <input type="radio" name="${prefix}_packingMode" value="grouped" class="hidden" ${packingMode === 'grouped' ? 'checked' : ''}>
+                    ${t('deliveryRules.packingModeGrouped')}
+                </label>
+                <label class="flex-1 px-3 py-2 rounded-md text-xs cursor-pointer transition-all text-center ${packingMode === 'single' ? 'bg-[hsl(var(--card))] shadow-sm font-medium card-text' : 'secondary-text'}">
+                    <input type="radio" name="${prefix}_packingMode" value="single" class="hidden" ${packingMode === 'single' ? 'checked' : ''}>
+                    ${t('deliveryRules.packingModeSingle')}
+                </label>
+            </div>
+            <p class="text-[10px] secondary-text italic mt-2 px-1">
+                ${packingMode === 'perItem' ? t('deliveryRules.packingModePerItemHelp') :
+                  packingMode === 'single' ? t('deliveryRules.packingModeSingleHelp') :
+                  t('deliveryRules.packingModeGroupedHelp')}
+            </p>
+        </div>
+    `
+
+    const valueLabel = getCurrencySymbol(currencyCode)
+
+    // Ranges table with only Max Volume and Value columns
+    html += `
+        <div class="mb-4">
+            <p class="text-[10px] secondary-text italic mb-3 px-1 flex items-center gap-1.5">
+                <span class="icon icon-info w-3.5 h-3.5 flex-shrink-0 opacity-70"></span>
+                <span>${t('deliveryRules.tieredMaxLimitHelp')}</span>
+            </p>
+
+            <div class="flex gap-2 mb-2 text-xs font-semibold secondary-text uppercase tracking-wider pl-2 pr-2">
+                <div class="flex-1">Max ${t('deliveryRules.volume')}</div>
+                <div class="flex-[1.5]">${t('deliveryRules.value')} (${valueLabel})</div>
+                <div class="w-8"></div>
+            </div>
+
+            <div class="ranges-container space-y-2 mb-4" data-prefix="${prefix}" data-type="volume_packages" data-unit="${volUnit}">
+                ${(data.ranges || []).map((range, idx) => renderRangeRow('volume_packages', prefix, idx, range, 'fixed', 'total', volUnit, '', currencyCode)).join('')}
+                ${(!data.ranges || data.ranges.length === 0) ? `<div class="empty-placeholder text-xs secondary-text italic text-center p-4 bg-[hsl(var(--muted))] rounded-lg border border-dashed border-default">${t('deliveryRules.noRange')}</div>` : ''}
+            </div>
+
+            <button class="add-range-btn w-full py-2 flex items-center justify-center space-x-2 text-sm font-medium text-primary hover:bg-[hsl(var(--primary))]/10 rounded-md border border-dashed border-[hsl(var(--primary))]/30 transition-all" data-prefix="${prefix}">
+                <span class="text-lg leading-none">+</span>
+                <span>${t('deliveryRules.addRange')}</span>
+            </button>
+        </div>
+    `
+
+    return html
+}
+
 /**
  * Render calculation rules with configurable types
  * @param {string} prefix - Form field prefix
@@ -680,6 +764,7 @@ export function renderCalculationRules(prefix, ruleData, config = {}) {
         dimension: { label: t('deliveryRules.typeDimension'), help: t('deliveryRules.typeDimensionHelp') },
         weight_volume: { label: t('deliveryRules.typeWeightVolume'), help: t('deliveryRules.typeWeightVolumeHelp') },
         weight_dimension: { label: t('deliveryRules.typeWeightDimension'), help: t('deliveryRules.typeWeightDimensionHelp') },
+        volume_packages: { label: t('deliveryRules.typeVolumePackages'), help: t('deliveryRules.typeVolumePackagesHelp') },
     }
 
     const types = availableTypeValues.map(value => ({
@@ -728,6 +813,7 @@ export function renderCalculationRules(prefix, ruleData, config = {}) {
         dimension: (p, d) => renderDimensionInputs(p, d, currencyCode),
         weight_volume: (p, d) => renderCombinedInputs(p, d, 'weight_volume', currencyCode),
         weight_dimension: (p, d) => renderCombinedInputs(p, d, 'weight_dimension', currencyCode),
+        volume_packages: (p, d) => renderVolumePackagesInputs(p, d, currencyCode),
     }
 
     const renderer = TYPE_RENDERERS[type]

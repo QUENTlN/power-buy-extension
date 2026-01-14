@@ -30,6 +30,7 @@ export const FEE_CALCULATION_TYPES = {
     // Combined types
     weight_volume: { category: 'combined', requiresTiers: true, requires: ['manageWeight', 'manageVolume'] },
     weight_dimension: { category: 'combined', requiresTiers: true, requires: ['manageWeight', 'manageDimension'] },
+    volume_packages: { category: 'combined', requiresTiers: true, requires: ['manageVolume'] },
 }
 
 /**
@@ -38,13 +39,13 @@ export const FEE_CALCULATION_TYPES = {
 export const FEE_CONFIG_PRESETS = {
     // Full configuration for seller shipping fees (includes 'cumul')
     sellerShipping: {
-        availableTypes: ['cumul', 'free', 'fixed', 'percentage', 'quantity', 'distance', 'weight', 'volume', 'order_amount', 'dimension', 'weight_volume', 'weight_dimension'],
+        availableTypes: ['cumul', 'free', 'fixed', 'percentage', 'quantity', 'distance', 'weight', 'volume', 'order_amount', 'dimension', 'weight_volume', 'weight_dimension', 'volume_packages'],
         includeItem: true,
     },
 
     // Full configuration for forwarder re-shipping fees (no 'cumul')
     forwarderReShipping: {
-        availableTypes: ['free', 'fixed', 'percentage', 'quantity', 'weight', 'volume', 'dimension', 'weight_volume', 'weight_dimension'],
+        availableTypes: ['free', 'fixed', 'percentage', 'quantity', 'weight', 'volume', 'dimension', 'weight_volume', 'weight_dimension', 'volume_packages'],
         includeItem: false,
     },
 

@@ -40,7 +40,8 @@ function renderCalcMethodDetails(calcMethod, currency, indent = false) {
       'volume': t("deliveryRules.typeVolume"),
       'dimension': t("deliveryRules.typeDimension"),
       'weight_volume': t("deliveryRules.typeWeightVolume"),
-      'weight_dimension': t("deliveryRules.typeWeightDimension")
+      'weight_dimension': t("deliveryRules.typeWeightDimension"),
+      'volume_packages': t("deliveryRules.typeVolumePackages")
     }
 
     const ranges = calcMethod.ranges || []
@@ -157,6 +158,19 @@ function renderCalcMethodDetails(calcMethod, currency, indent = false) {
             `).join('')
             break
 
+          case 'volume_packages':
+            tableHeader = `
+              <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.volume")}</th>
+              <th class="text-left py-1 px-2 secondary-text font-medium">${t("deliveryRules.value")}</th>
+            `
+            tableRows = ranges.map(range => `
+              <tr class="border-b border-default/50">
+                <td class="py-1 px-2 card-text">${fmtVal(range.maxVol)}</td>
+                <td class="py-1 px-2 card-text font-medium">${getValueDisplay(range.value)}</td>
+              </tr>
+            `).join('')
+            break
+
           case 'weight_dimension':
             tableHeader = `
               <th class="text-left py-1 px-2 secondary-text font-medium">Max ${t("deliveryRules.weight")}</th>
@@ -204,7 +218,7 @@ function renderCalcMethodDetails(calcMethod, currency, indent = false) {
           'grouped': t("deliveryRules.packingModeGrouped"),
           'single': t("deliveryRules.packingModeSingle")
         }
-        const showPackingMode = ['weight_volume', 'weight_dimension'].includes(normalizedType)
+        const showPackingMode = ['weight_volume', 'weight_dimension', 'volume_packages'].includes(normalizedType)
 
         html = `
         <div class="${indentClass} text-sm" data-rule-type="${normalizedType}">

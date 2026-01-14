@@ -8,6 +8,7 @@ import {
     renderOrderAmountInputs,
     renderDimensionInputs,
     renderCombinedInputs,
+    renderVolumePackagesInputs,
     renderRangeRow
 } from './FeeCalculationView.js'
 import { getCurrencySymbol } from '../../utils/formatters.js'
@@ -96,6 +97,15 @@ export function extractCalculationRule(prefix, container) {
         rule.packingMode = packingModeRadio ? packingModeRadio.value : 'grouped'
 
         rule.ranges = extractRangesFromInputs(prefix, container, ['maxWeight', 'maxVol'])
+    } else if (type === 'volume_packages') {
+        const unitSelect = container.querySelector(`select[name="${prefix}_unit"]`)
+        if (unitSelect) rule.unit = unitSelect.value
+
+        // Extract packing mode
+        const packingModeRadio = container.querySelector(`input[name="${prefix}_packingMode"]:checked`)
+        rule.packingMode = packingModeRadio ? packingModeRadio.value : 'grouped'
+
+        rule.ranges = extractRangesFromInputs(prefix, container, ['maxVol'])
     } else if (type === 'order_amount') {
         // Always tiered, always 'total' mode
         rule.tierValueMode = 'total'
@@ -718,6 +728,9 @@ export async function handleCalculationTypeChange(e) {
     } else if (['weight_volume', 'weight_dimension'].includes(newType)) {
         const data = { type: newType, weightUnit: getDefaultUnitForType('weight'), volUnit: getDefaultUnitForType('volume') }
         newHtml = renderCombinedInputs(prefix, data, newType, currency)
+    } else if (newType === 'volume_packages') {
+        const data = { type: newType, unit: getDefaultUnitForType('volume') }
+        newHtml = renderVolumePackagesInputs(prefix, data, currency)
     } else if (newType === 'cumul') {
         newHtml = `<p class="text-sm secondary-text italic">${t('deliveryRules.typeCumul')}</p>`
     } else if (newType === 'free') {
